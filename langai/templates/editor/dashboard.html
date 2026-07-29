@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard LangAI{% endblock %}
+
+{% block content %}
+<div class="dashboard-page">
+  <div class="container-fluid px-4 py-4">
+    <div class="dashboard-header mb-4">
+      <div>
+        <h2 class="fw-700 mb-0">
+          Welcome {{ user.first_name|default:user.username }} 
+        </h2>
+      </div>
+      <a href="{% url 'editor' %}" class="btn btn-primary-gradient px-4">
+        New Analysis
+      </a>
+    </div>
+    <!-- Stats Cards -->
+    <div class="row g-4 mb-4">
+      <div class="col-sm-6 col-xl-3">
+        <a href="{% url 'my_documents' %}" class="stat-card stat-violet stat-clickable text-decoration-none">
+          <div class="stat-icon"><i class="bi bi-file-earmark-text"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">{{ total_docs }}</div>
+            <div class="stat-label">Saved Documents</div>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-amber">
+          <div class="stat-icon"><i class="bi bi-lightning-charge-fill"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">{{ total_edits }}</div>
+            <div class="stat-label">Total Operations</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-teal">
+          <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">{{ today_edits }}</div>
+            <div class="stat-label">Today's Operations</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-sm-6 col-xl-3">
+        <div class="stat-card stat-rose">
+          <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+          <div class="stat-info">
+            <div class="stat-value">{{ week_edits }}</div>
+            <div class="stat-label">This Week</div>
+          </div>
+        </div>
+      </div>
+    </div>
+<!-- Feature Quick-Access -->
+<div class="row g-3 mb-4">
+  <div class="col-12"><h5 class="fw-600 text-muted-title">Quick Actions</h5></div>
+
+  <div class="col-6 col-md-4 col-lg-2half">
+    <a href="{% url 'editor' %}" class="quick-action-card qc-violet">
+      <i class="bi bi-spellcheck"></i>
+      <span>Grammar Check</span>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2half">
+    <a href="{% url 'editor' %}" class="quick-action-card qc-amber">
+      <i class="bi bi-translate"></i>
+      <span>Translate</span>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2half">
+    <a href="{% url 'editor' %}" class="quick-action-card qc-teal">
+      <i class="bi bi-shield-check"></i>
+      <span>Plagiarism</span>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2half">
+    <a href="{% url 'editor' %}" class="quick-action-card qc-rose">
+      <i class="bi bi-file-text"></i>
+      <span>Summarize</span>
+    </a>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2half">
+    <a href="{% url 'editor' %}" class="quick-action-card qc-indigo">
+      <i class="bi bi-mic-fill"></i>
+      <span>Speech-to-Text</span>
+    </a>
+  </div>
+</div>
+    <!-- Recent History -->
+    <div class="row g-4">
+      <div class="col-lg-8">
+        <div class="langai-card">
+          <div class="card-header-custom d-flex justify-content-between align-items-center">
+            <h6 class="fw-600 mb-0"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Activity</h6>
+            <a href="{% url 'history' %}" class="btn-link-sm">View All</a>
+          </div>
+          <div class="table-responsive">
+            <table class="table langai-table mb-0">
+              <thead>
+                <tr>
+                  <th>Operation</th>
+                  <th>Input Preview</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for h in recent_history %}
+                <tr>
+                  <td>
+                    <span class="op-badge op-{{ h.operation }}">
+                      {{ h.get_operation_display }}
+                    </span>
+                  </td>
+                  <td class="text-truncate" style="max-width:200px">
+                    <span class="text-muted small">{{ h.truncated_input }}</span>
+                  </td>
+                  <td class="text-muted small">{{ h.created_at|date:"M d, H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                  <td colspan="3" class="text-center text-muted py-4">
+                    <i class="bi bi-inbox fs-2 d-block mb-2 opacity-25"></i>
+                    No activity yet. Start with the editor!
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-4">
+        <div class="langai-card h-100 ops-chart-card">
+          <div class="card-header-custom d-flex align-items-center justify-content-between">
+            <h6 class="fw-600 mb-0">
+              <i class="bi bi-pie-chart-fill me-2" style="color:var(--primary)"></i>Operations Breakdown
+            </h6>
+            <span class="ops-total-badge" id="opsTotalBadge">0 ops</span>
+          </div>
+
+          <div class="ops-chart-body">
+            <!-- Doughnut chart with centre label -->
+            <div class="ops-donut-wrap">
+              <canvas id="opsChart" data-ops='{{ op_data|safe }}'></canvas>
+              <div class="ops-center-label">
+                <div class="ops-center-num" id="opsCenterNum">0</div>
+                <div class="ops-center-sub">Total</div>
+              </div>
+            </div>
+
+            <!-- Custom animated legend -->
+            <div class="ops-legend" id="opsLegend"></div>
+          </div>
+
+          <!-- Empty state -->
+          <div class="ops-empty d-none" id="opsEmpty">
+            <i class="bi bi-pie-chart" style="font-size:2.5rem;opacity:.18"></i>
+            <p class="mt-2 mb-0 small text-muted">No operations yet.<br>Start with the editor!</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+(function () {
+  const opData = JSON.parse(document.getElementById('opsChart').dataset.ops || '{}');
+
+  const META = {
+    grammar:    { label: 'Grammar Check', color: '#7c3aed', icon: 'bi-spellcheck' },
+    translate:  { label: 'Translation',   color: '#f59e0b', icon: 'bi-translate' },
+    plagiarism: { label: 'Plagiarism',    color: '#10b981', icon: 'bi-shield-check' },
+    summarize:  { label: 'Summarize',     color: '#ef4444', icon: 'bi-file-text' },
+    speech:     { label: 'Speech‑to‑Text',color: '#6366f1', icon: 'bi-mic-fill' },
+  };
+
+  const keys   = Object.keys(opData);
+  const values = Object.values(opData);
+  const total  = values.reduce((a, b) => a + b, 0);
+
+  //  empty state 
+  if (total === 0) {
+    document.querySelector('.ops-chart-body').classList.add('d-none');
+    document.getElementById('opsEmpty').classList.remove('d-none');
+    return;
+  }
+
+  // centre counter
+  document.getElementById('opsCenterNum').textContent = total;
+  document.getElementById('opsTotalBadge').textContent = total + ' ops';
+
+  //  colour helpers 
+  const colors    = keys.map(k => (META[k] || { color: '#94a3b8' }).color);
+  const colorsHov = colors.map(c => c + 'cc');
+
+  //  Chart.js center-text plugin 
+  const centerPlugin = {
+    id: 'centerText',
+    beforeDraw(chart) {
+      const { ctx, chartArea: { top, bottom, left, right } } = chart;
+      const cx = (left + right) / 2, cy = (top + bottom) / 2;
+      ctx.save();
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.restore();
+    }
+  };
+
+  //  Build chart 
+  const ctx = document.getElementById('opsChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'doughnut',
+    plugins: [centerPlugin],
+    data: {
+      labels: keys.map(k => (META[k] || { label: k }).label),
+      datasets: [{
+        data: values,
+        backgroundColor: colors,
+        hoverBackgroundColor: colorsHov,
+        borderWidth: 3,
+        borderColor: 'transparent',
+        hoverBorderColor: '#ffffff22',
+        hoverOffset: 10,
+        spacing: 3,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      cutout: '72%',
+      animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeInOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ` ${ctx.label}: ${ctx.parsed} (${((ctx.parsed / total) * 100).toFixed(1)}%)`
+          },
+          backgroundColor: '#1e1b4b',
+          titleColor: '#e2e8f0',
+          bodyColor: '#cbd5e1',
+          borderColor: '#7c3aed44',
+          borderWidth: 1,
+          padding: 10,
+          cornerRadius: 10,
+        }
+      }
+    }
+  });
+
+  // ── Build legend ─────────────────────────────────────────────
+  const legendEl = document.getElementById('opsLegend');
+  keys.forEach((k, i) => {
+    const meta = META[k] || { label: k, color: '#94a3b8', icon: 'bi-circle' };
+    const pct  = ((values[i] / total) * 100).toFixed(1);
+    const row  = document.createElement('div');
+    row.className = 'ops-legend-row';
+    row.innerHTML = `
+      <div class="ops-legend-left">
+        <span class="ops-legend-dot" style="background:${meta.color};box-shadow:0 0 6px ${meta.color}88"></span>
+        <i class="bi ${meta.icon} ops-legend-icon" style="color:${meta.color}"></i>
+        <span class="ops-legend-name">${meta.label}</span>
+      </div>
+      <div class="ops-legend-right">
+        <div class="ops-bar-track">
+          <div class="ops-bar-fill" style="--bar-w:${pct}%;background:${meta.color};box-shadow:0 0 8px ${meta.color}66" data-pct="${pct}"></div>
+        </div>
+        <span class="ops-legend-pct">${pct}%</span>
+        <span class="ops-legend-count">${values[i]}</span>
+      </div>`;
+    legendEl.appendChild(row);
+  });
+
+  // Animate bars in after short delay
+  setTimeout(() => {
+    document.querySelectorAll('.ops-bar-fill').forEach(b => {
+      b.style.width = b.dataset.pct + '%';
+    });
+  }, 300);
+
+})();
+</script>
+
+<style>
+/* ── ops chart card ──────────────────────────────────────── */
+.ops-chart-card { overflow: hidden; }
+
+.ops-total-badge {
+  font-size: .7rem; font-weight: 700; letter-spacing: .04em;
+  background: var(--primary); color: #fff;
+  padding: 3px 10px; border-radius: 20px;
+  box-shadow: 0 2px 8px var(--primary)55;
+}
+
+.ops-chart-body { padding: 16px 20px 8px; }
+
+/* donut wrapper with centre label */
+.ops-donut-wrap {
+  position: relative; display: flex;
+  justify-content: center; align-items: center;
+  margin-bottom: 18px;
+}
+.ops-donut-wrap canvas { max-width: 180px; max-height: 180px; }
+
+.ops-center-label {
+  position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none;
+}
+.ops-center-num {
+  font-size: 1.8rem; font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.ops-center-sub {
+  font-size: .65rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-muted); margin-top: 2px;
+}
+
+/* legend rows */
+.ops-legend { display: flex; flex-direction: column; gap: 10px; }
+
+.ops-legend-row {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 8px;
+  padding: 6px 10px; border-radius: 10px;
+  transition: background .2s;
+}
+.ops-legend-row:hover { background: var(--nav-pill-hover); }
+
+.ops-legend-left {
+  display: flex; align-items: center; gap: 7px;
+  min-width: 0; flex: 1;
+}
+.ops-legend-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+.ops-legend-icon { font-size: .8rem; flex-shrink: 0; }
+.ops-legend-name {
+  font-size: .78rem; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.ops-legend-right {
+  display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+}
+.ops-bar-track {
+  width: 60px; height: 5px;
+  background: var(--nav-pill-hover);
+  border-radius: 99px; overflow: hidden;
+}
+.ops-bar-fill {
+  height: 100%; width: 0; border-radius: 99px;
+  transition: width .8s cubic-bezier(.4,0,.2,1);
+}
+.ops-legend-pct {
+  font-size: .7rem; font-weight: 700; color: var(--text-muted); min-width: 32px; text-align: right;
+}
+.ops-legend-count {
+  font-size: .7rem; font-weight: 700;
+  background: var(--nav-pill-hover);
+  padding: 2px 7px; border-radius: 20px; min-width: 24px; text-align: center;
+}
+
+/* empty state */
+.ops-empty {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 40px 20px; text-align: center;
+}
+</style>
+{% endblock %}

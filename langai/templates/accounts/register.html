@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Create Account · LangAI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-bg-art">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+    <div class="circle c3"></div>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-center min-vh-100 align-items-center py-5">
+      <div class="col-md-8 col-lg-6 col-xl-5">
+
+        <div class="auth-card">
+          <!-- Logo -->
+          <div class="auth-logo">
+            <div class="brand-icon-lg"><i class="bi bi-translate"></i></div>
+            <h1 class="brand-text-lg">Lang<span class="brand-accent">AI</span></h1>
+            <p class="auth-subtitle">Create your free account</p>
+          </div>
+
+          <form method="post" novalidate autocomplete="off">
+            {% csrf_token %}
+
+            <!-- Non-field errors -->
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 mb-3 d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-circle flex-shrink-0"></i>
+              <span>{% for e in form.non_field_errors %}{{ e }}{% endfor %}</span>
+            </div>
+            {% endif %}
+
+            <!-- First + Last Name -->
+            <div class="row g-3 mb-3">
+              <div class="col-6">
+                <label class="form-label-custom">First name</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                <div class="invalid-msg">{{ form.first_name.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+              <div class="col-6">
+                <label class="form-label-custom">Last name</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                <div class="invalid-msg">{{ form.last_name.errors|join:", " }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <!-- Username -->
+            <div class="mb-3">
+              <label class="form-label-custom">
+                <i class="bi bi-person me-1"></i>Username
+              </label>
+              {{ form.username }}
+              {% if form.username.errors %}
+              <div class="invalid-msg">{{ form.username.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Email -->
+            <div class="mb-3">
+              <label class="form-label-custom">
+                <i class="bi bi-envelope me-1"></i>Email address
+              </label>
+              {{ form.email }}
+              {% if form.email.errors %}
+              <div class="invalid-msg">{{ form.email.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div class="mb-3">
+              <label class="form-label-custom">
+                <i class="bi bi-lock me-1"></i>Password
+              </label>
+              <div class="password-wrapper">
+                {{ form.password1 }}
+                <button type="button" class="toggle-pw" onclick="togglePw('password1')" aria-label="Show password">
+                  <i class="bi bi-eye" id="eye-password1"></i>
+                </button>
+              </div>
+              {% if form.password1.errors %}
+              <div class="invalid-msg">{{ form.password1.errors|join:", " }}</div>
+              {% endif %}
+              <!-- Strength meter -->
+              <div class="password-strength mt-2" id="pwStrength" style="display:none">
+                <div class="strength-bar">
+                  <div class="strength-fill" id="strengthFill"></div>
+                </div>
+                <span class="strength-label" id="strengthLabel"></span>
+              </div>
+            </div>
+
+            <!-- Confirm Password -->
+            <div class="mb-1">
+              <label class="form-label-custom">
+                <i class="bi bi-lock-fill me-1"></i>Confirm password
+              </label>
+              <div class="password-wrapper">
+                {{ form.password2 }}
+                <button type="button" class="toggle-pw" onclick="togglePw('password2')" aria-label="Show password">
+                  <i class="bi bi-eye" id="eye-password2"></i>
+                </button>
+              </div>
+              {% if form.password2.errors %}
+              <div class="invalid-msg">{{ form.password2.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn btn-primary-gradient w-100 mt-4 btn-lg btn-process">
+              <i class="bi bi-person-plus me-2"></i>Create Account
+            </button>
+
+            <p class="text-center mt-3 mb-0" style="font-size:.85rem; color:var(--text-muted)">
+              Already have an account?
+              <a href="{% url 'login' %}" class="auth-link">Sign in here</a>
+            </p>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePw(id) {
+  const inp = document.getElementById(id);
+  const eye = document.getElementById('eye-' + id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.className = inp.type === 'text' ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
+
+document.getElementById('password1').addEventListener('input', function () {
+  const val  = this.value;
+  const bar  = document.getElementById('pwStrength');
+  const fill = document.getElementById('strengthFill');
+  const lbl  = document.getElementById('strengthLabel');
+  bar.style.display = val.length ? 'flex' : 'none';
+  let score = 0;
+  if (val.length >= 8)        score++;
+  if (/[A-Z]/.test(val))      score++;
+  if (/[0-9]/.test(val))      score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { w: '20%',  c: '#ef4444', t: 'Weak'   },
+    { w: '45%',  c: '#f97316', t: 'Fair'   },
+    { w: '72%',  c: '#f59e0b', t: 'Good'   },
+    { w: '100%', c: '#10b981', t: 'Strong' },
+  ];
+  const lvl = levels[score - 1] || levels[0];
+  fill.style.width      = lvl.w;
+  fill.style.background = lvl.c;
+  lbl.textContent       = lvl.t;
+  lbl.style.color       = lvl.c;
+});
+</script>
+{% endblock %}

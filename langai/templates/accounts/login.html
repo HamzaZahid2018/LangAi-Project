@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Login · LangAI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-bg-art">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+    <div class="circle c3"></div>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-center min-vh-100 align-items-center py-5">
+      <div class="col-md-6 col-lg-5 col-xl-4">
+
+        <div class="auth-card">
+          <div class="auth-logo">
+            <div class="brand-icon-lg"><i class="bi bi-translate"></i></div>
+            <h1 class="brand-text-lg">Lang<span class="brand-accent">AI</span></h1>
+            <p class="auth-subtitle">Sign in to continue</p>
+          </div>
+
+          <form method="post" novalidate>
+            {% csrf_token %}
+
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 mb-3 d-flex align-items-center gap-2">
+              <i class="bi bi-shield-exclamation flex-shrink-0"></i>
+              <span>{{ form.non_field_errors|join:", " }}</span>
+            </div>
+            {% endif %}
+
+            <!-- Username -->
+            <div class="mb-3">
+              <label class="form-label-custom">
+                <i class="bi bi-person me-1"></i>Username
+              </label>
+              {{ form.username }}
+              {% if form.username.errors %}
+              <div class="invalid-msg">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ form.username.errors|join:", " }}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Password -->
+            <div class="mb-1">
+              <label class="form-label-custom">
+                <i class="bi bi-lock me-1"></i>Password
+              </label>
+              <div class="password-wrapper">
+                {{ form.password }}
+                <button type="button" class="toggle-pw" onclick="togglePw('password')" aria-label="Show password">
+                  <i class="bi bi-eye" id="eye-password"></i>
+                </button>
+              </div>
+              {% if form.password.errors %}
+              <div class="invalid-msg">
+                <i class="bi bi-exclamation-circle me-1"></i>{{ form.password.errors|join:", " }}
+              </div>
+              {% endif %}
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" class="btn btn-primary-gradient w-100 mt-4 btn-lg btn-process">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </button>
+
+            <p class="text-center mt-3 mb-0" style="font-size:.85rem; color:var(--text-muted)">
+              Don't have an account?
+              <a href="{% url 'register' %}" class="auth-link">Create one</a>
+            </p>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePw(id) {
+  const inp = document.getElementById(id);
+  const eye = document.getElementById('eye-' + id);
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+  eye.className = inp.type === 'text' ? 'bi bi-eye-slash' : 'bi bi-eye';
+}
+</script>
+{% endblock %}

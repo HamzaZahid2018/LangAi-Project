@@ -1,0 +1,408 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}My Documents · LangAI{% endblock %}
+
+{% block content %}
+<div class="mydocs-page">
+  <div class="container-fluid px-4 py-4">
+
+    <!-- ── Hero Header ── -->
+    <div class="mydocs-hero mb-4">
+      <div class="mydocs-hero-left">
+        <div class="mydocs-hero-icon">
+          <i class="bi bi-folder2-open"></i>
+        </div>
+        <div>
+          <h3 class="fw-800 mb-1">My Documents</h3>
+          <p class="mb-0 small" style="color:var(--text-muted)">
+            {% if total == 0 %}Your document vault is empty — process something in the editor to get started.
+            {% elif total == 1 %}1 document saved in your vault
+            {% else %}<strong style="color:var(--text-primary)">{{ total }}</strong> documents saved in your vault {% if total_words %}&nbsp;·&nbsp;<strong style="color:var(--text-primary)">{{ total_words|floatformat:"0" }}</strong> total words{% endif %}{% endif %}
+          </p>
+        </div>
+      </div>
+      <div class="mydocs-hero-right">
+        <a href="{% url 'dashboard' %}" class="btn btn-ghost-sm me-2">
+          <i class="bi bi-grid-1x2 me-1"></i>Dashboard
+        </a>
+        <a href="{% url 'editor' %}" class="btn btn-primary-gradient px-4">
+          <i class="bi bi-plus-lg me-1"></i>New Analysis
+        </a>
+      </div>
+    </div>
+
+    {% if documents %}
+
+    <!-- ── Stats Bar ── -->
+    <div class="docs-stats-bar mb-4">
+      <div class="docs-stat-item">
+        <i class="bi bi-files"></i>
+        <span><strong>{{ total }}</strong> Documents</span>
+      </div>
+      <div class="docs-stat-divider"></div>
+      <div class="docs-stat-item">
+        <i class="bi bi-cloud-check"></i>
+        <span>Securely saved to your account</span>
+      </div>
+      <div class="docs-stat-divider"></div>
+      <div class="docs-stat-item">
+        <i class="bi bi-sort-down-alt"></i>
+        <span>Latest first</span>
+      </div>
+
+      <!-- right: Search -->
+      <form method="get" class="docs-search-form ms-auto">
+        <i class="bi bi-search docs-search-icon"></i>
+        <input type="text" name="q" value="{{ search_q }}" placeholder="Search documents…"
+               class="docs-search-input" autocomplete="off" />
+        {% if search_q %}
+        <a href="{% url 'my_documents' %}" class="docs-search-clear" title="Clear search">
+          <i class="bi bi-x-lg"></i>
+        </a>
+        {% endif %}
+      </form>
+    </div>
+
+    {% if search_q %}
+    <p class="small mb-3" style="color:var(--text-muted)">
+      Showing results for <strong>"{{ search_q }}"</strong> &mdash; {{ total }} match{{ total|pluralize:"es" }}
+    </p>
+    {% endif %}
+
+    <!-- ── Document Cards Grid ── -->
+    <div class="row g-4">
+      {% for doc in documents %}
+      <div class="col-md-6 col-xl-4">
+        <div class="doc-card">
+
+          <!-- Gradient accent bar -->
+          <div class="doc-card-bar"></div>
+
+          <!-- Card Body -->
+          <div class="doc-card-body">
+
+            <!-- Top: icon + title + date -->
+            <div class="doc-card-top">
+              <div class="doc-card-icon">
+                <i class="bi bi-file-earmark-richtext"></i>
+              </div>
+              <div class="doc-card-title-wrap">
+                <h6 class="doc-card-title" title="{{ doc.title }}">{{ doc.title }}</h6>
+                <div class="doc-card-meta">
+                  <span class="doc-card-date">
+                    <i class="bi bi-clock me-1"></i>{{ doc.updated_at|date:"M d, Y · H:i" }}
+                  </span>
+                  <span class="doc-meta-sep">·</span>
+                  <span class="doc-card-id">#{{ doc.pk }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Badges row -->
+            <div class="doc-badges-row">
+              <span class="doc-badge-lang">
+                <i class="bi bi-translate me-1"></i>{{ doc.get_language_display }}
+              </span>
+              <span class="doc-badge-stat">
+                <i class="bi bi-type me-1"></i>{{ doc.word_count }} words
+              </span>
+              <span class="doc-badge-stat">
+                <i class="bi bi-hash me-1"></i>{{ doc.char_count }} chars
+              </span>
+            </div>
+
+            <!-- Content Preview -->
+            <div class="doc-card-preview">
+              <div class="doc-preview-label"><i class="bi bi-eye me-1"></i>Preview</div>
+              <p class="doc-preview-content">{{ doc.content|truncatechars:220 }}</p>
+            </div>
+
+          </div>
+
+          <!-- Card Footer: Download + Delete -->
+          <div class="doc-card-footer">
+            <span class="doc-footer-label">Download as</span>
+            <div class="doc-footer-actions">
+              <a href="{% url 'download_document' doc.pk %}"
+                 class="doc-dl-btn doc-dl-txt" title="Download as TXT">
+                <i class="bi bi-filetype-txt me-1"></i>TXT
+              </a>
+              <a href="{% url 'download_document_pdf' doc.pk %}"
+                 class="doc-dl-btn doc-dl-pdf" title="Download as PDF">
+                <i class="bi bi-filetype-pdf me-1"></i>PDF
+              </a>
+              <form method="post" action="{% url 'delete_document' doc.pk %}"
+                    onsubmit="return confirm('Delete &quot;{{ doc.title }}&quot;? This cannot be undone.');"
+                    class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="doc-dl-btn doc-dl-del" title="Delete document">
+                  <i class="bi bi-trash3"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    {% else %}
+
+    <!-- ── Empty State ── -->
+    <div class="docs-empty-wrap">
+      <div class="docs-empty-card">
+        <div class="docs-empty-anim">
+          <div class="docs-empty-ring"></div>
+          <div class="docs-empty-inner">
+            <i class="bi bi-folder2-open"></i>
+          </div>
+        </div>
+        {% if search_q %}
+        <h4 class="fw-800 mt-4 mb-2">No Results Found</h4>
+        <p class="mb-4" style="max-width:340px;margin:0 auto 24px;color:var(--text-muted)">
+          No documents matching <strong>"{{ search_q }}"</strong>. Try a different search term.
+        </p>
+        <a href="{% url 'my_documents' %}" class="btn btn-ghost-sm px-5 py-2">
+          <i class="bi bi-x-circle me-2"></i>Clear Search
+        </a>
+        {% else %}
+        <h4 class="fw-800 mt-4 mb-2">No Documents Yet</h4>
+        <p class="mb-4" style="max-width:340px;margin:0 auto 24px;color:var(--text-muted)">
+          Write or paste text in the editor, run an AI operation, then click
+          <strong>Save Document</strong> — it will appear here instantly.
+        </p>
+        <a href="{% url 'editor' %}" class="btn btn-primary-gradient px-5 py-2">
+          <i class="bi bi-pencil-square me-2"></i>Open Editor
+        </a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* ══════════════════════════════════════════════════
+   MY DOCUMENTS PAGE
+══════════════════════════════════════════════════ */
+.mydocs-page { min-height: 100vh; }
+
+/* Hero */
+.mydocs-hero {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.mydocs-hero-left  { display: flex; align-items: center; gap: 18px; }
+.mydocs-hero-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+.mydocs-hero-icon {
+  width: 56px; height: 56px; border-radius: 16px; flex-shrink: 0;
+  background: var(--gradient-primary);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.5rem; color: #fff;
+  box-shadow: 0 8px 24px rgba(84,120,255,.35);
+}
+
+/* Stats bar */
+.docs-stats-bar {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 20px; flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+.docs-stat-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .82rem; color: var(--text-muted);
+}
+.docs-stat-item i { font-size: 1rem; color: var(--primary); }
+.docs-stat-item strong { color: var(--text-primary); }
+.docs-stat-divider {
+  width: 1px; height: 20px; background: var(--border); flex-shrink: 0;
+}
+
+/* Search */
+.docs-search-form {
+  display: flex; align-items: center; gap: 0;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: 20px; overflow: hidden;
+  padding: 0 12px; min-width: 220px;
+  transition: border-color .2s;
+}
+.docs-search-form:focus-within { border-color: var(--primary); }
+.docs-search-icon { color: var(--text-muted); font-size: .85rem; flex-shrink: 0; }
+.docs-search-input {
+  flex: 1; border: none; background: transparent;
+  padding: 7px 8px; font-size: .83rem;
+  color: var(--text-primary); outline: none;
+}
+.docs-search-input::placeholder { color: var(--text-muted); }
+.docs-search-clear {
+  color: var(--text-muted); font-size: .75rem; text-decoration: none;
+  flex-shrink: 0; transition: color .2s;
+}
+.docs-search-clear:hover { color: var(--danger); }
+
+/* ── Document Card ── */
+.doc-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden; display: flex;
+  flex-direction: column; height: 100%;
+  box-shadow: var(--shadow-sm);
+  transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+}
+.doc-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 40px rgba(84,120,255,.18);
+  border-color: var(--primary);
+}
+
+.doc-card-bar {
+  height: 4px; width: 100%; flex-shrink: 0;
+  background: var(--gradient-primary);
+}
+
+.doc-card-body { padding: 20px 20px 14px; flex: 1; }
+
+.doc-card-top {
+  display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px;
+}
+.doc-card-icon {
+  width: 44px; height: 44px; border-radius: var(--radius-sm); flex-shrink: 0;
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; color: var(--primary);
+  transition: all .22s;
+}
+.doc-card:hover .doc-card-icon {
+  background: var(--gradient-primary); color: #fff; border-color: transparent;
+  box-shadow: 0 4px 14px rgba(84,120,255,.4);
+}
+.doc-card-title-wrap { flex: 1; min-width: 0; }
+.doc-card-title {
+  font-size: .95rem; font-weight: 700; margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  color: var(--text-primary); line-height: 1.3;
+}
+.doc-card-meta {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.doc-card-date {
+  font-size: .7rem; color: var(--text-muted); font-weight: 500;
+}
+.doc-meta-sep { color: var(--border); font-size: .7rem; }
+.doc-card-id {
+  font-size: .65rem; font-weight: 700; font-family: monospace;
+  color: var(--text-muted); opacity: .6;
+}
+
+/* Badges */
+.doc-badges-row {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px;
+}
+.doc-badge-lang {
+  font-size: .68rem; font-weight: 700;
+  background: var(--gradient-primary);
+  color: #fff; padding: 3px 10px; border-radius: 20px;
+}
+.doc-badge-stat {
+  font-size: .68rem; font-weight: 600; color: var(--text-muted);
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  padding: 3px 10px; border-radius: 20px;
+}
+
+/* Preview */
+.doc-card-preview {
+  background: var(--surface-soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.doc-preview-label {
+  font-size: .63rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--primary); margin-bottom: 6px;
+}
+.doc-preview-content {
+  font-size: .78rem; color: var(--text-muted); line-height: 1.65; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Card Footer */
+.doc-card-footer {
+  display: flex; align-items: center;
+  justify-content: space-between; gap: 8px;
+  padding: 11px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+.doc-footer-label {
+  font-size: .68rem; font-weight: 600; color: var(--text-muted);
+}
+.doc-footer-actions { display: flex; align-items: center; gap: 6px; }
+
+.doc-dl-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 13px; border-radius: 8px;
+  font-size: .72rem; font-weight: 700;
+  text-decoration: none; border: 1px solid var(--border);
+  cursor: pointer; background: var(--card-bg);
+  color: var(--text-muted);
+  transition: all .18s ease;
+}
+.doc-dl-btn:hover {
+  background: var(--primary); border-color: var(--primary);
+  color: #fff; transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(84,120,255,.35);
+}
+.doc-dl-del:hover {
+  background: var(--danger, #ef4444);
+  border-color: var(--danger, #ef4444); color: #fff;
+  box-shadow: 0 4px 12px rgba(239,68,68,.35);
+}
+
+/* Empty State */
+.docs-empty-wrap {
+  display: flex; justify-content: center; align-items: center; min-height: 55vh;
+}
+.docs-empty-card {
+  text-align: center; background: var(--card-bg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 60px 48px; max-width: 460px; width: 100%;
+  box-shadow: var(--shadow-md);
+}
+.docs-empty-anim {
+  position: relative; width: 96px; height: 96px;
+  margin: 0 auto; display: flex; align-items: center; justify-content: center;
+}
+.docs-empty-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 2.5px solid transparent;
+  border-top-color: var(--primary); border-right-color: rgba(84,120,255,.3);
+  animation: docs-spin 2s linear infinite; opacity: .6;
+}
+@keyframes docs-spin { to { transform: rotate(360deg); } }
+.docs-empty-inner {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--surface-soft); border: 1.5px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 2rem; color: var(--primary);
+}
+
+/* Dark mode extras */
+[data-theme='dark'] .doc-card { background: var(--card-bg); }
+[data-theme='dark'] .doc-card-preview { background: rgba(255,255,255,.03); }
+[data-theme='dark'] .docs-search-input { color: var(--text-primary); }
+[data-theme='dark'] .docs-stats-bar { background: var(--card-bg); }
+</style>
+{% endblock %}

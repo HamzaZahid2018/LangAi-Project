@@ -1,0 +1,523 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}LangAI - Intelligent Writing Assistant{% endblock %}
+
+{% block extra_css %}
+<style>
+  /*  Hero  */
+  .hero-section {
+    min-height: 90vh;
+    display: flex;
+    align-items: center;
+    background: var(--page-gradient);
+    position: relative;
+    overflow: hidden;
+    padding: 100px 0;
+  }
+
+  .hero-bg-art .circle {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.18;
+    z-index: 0;
+  }
+
+  .hero-bg-art .c1 { width: 520px; height: 520px; background: var(--primary); top: -200px; right: -100px; }
+  .hero-bg-art .c2 { width: 420px; height: 420px; background: var(--amber);   bottom: -100px; left: -100px; }
+
+  .hero-content { position: relative; z-index: 1; }
+
+  .landing-hero-title {
+    font-size: 4rem;
+    font-weight: 800;
+    font-family: var(--font-display);
+    line-height: 1.1;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(135deg, var(--text-primary) 30%, var(--primary) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .landing-hero-subtitle {
+    font-size: 1.15rem;
+    color: var(--text-muted);
+    margin-bottom: 2.5rem;
+    max-width: 560px;
+    line-height: 1.7;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    background: rgba(84, 120, 255, 0.14);
+    border: 1px solid rgba(84, 120, 255, 0.35);
+    color: var(--primary);
+    border-radius: 999px;
+    padding: .35rem 1rem;
+    font-size: .78rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+    margin-bottom: 1.25rem;
+  }
+
+  .btn-hero-secondary {
+    padding: 1rem 2rem;
+    font-size: 1rem;
+    border-radius: 14px;
+    font-weight: 700;
+    background: var(--card-bg);
+    border: 1.5px solid var(--border);
+    color: var(--text-primary);
+    transition: all .25s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+  }
+  .btn-hero-secondary:hover {
+    background: var(--surface-soft);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .btn-hero-main {
+    padding: 1rem 2.5rem;
+    font-size: 1.1rem;
+    border-radius: 14px;
+    font-weight: 700;
+    transition: all .3s;
+  }
+
+  .hero-notice {
+    font-size: .82rem;
+    color: var(--text-muted);
+    margin-top: 1rem;
+  }
+
+  /*  Live Preview card  */
+  .preview-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.75rem;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .preview-original {
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: .75rem;
+  }
+
+  .preview-corrected {
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.28);
+    border-radius: 12px;
+    padding: 1rem;
+  }
+
+  /*  Sections  */
+  .section-light {
+    background: var(--bg);
+    padding: 5rem 0;
+  }
+
+  .section-muted {
+    background: var(--surface-soft);
+    padding: 5rem 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-weight: 800;
+    font-family: var(--font-display);
+    color: var(--text-primary);
+    margin-bottom: .5rem;
+  }
+
+  .section-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 3rem;
+  }
+
+  /*  Feature cards  */
+  .feature-card-landing {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2rem;
+    height: 100%;
+    transition: all .3s ease;
+    text-decoration: none;
+    display: block;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .feature-card-landing:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+  }
+
+  .feature-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: .5rem;
+  }
+
+  .feature-card-desc {
+    color: var(--text-muted);
+    font-size: .9rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .feature-icon-wrapper {
+    width: 58px;
+    height: 58px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.7rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .fi-violet { background: rgba(124, 58, 237, 0.14); color: var(--primary); }
+  .fi-amber  { background: rgba(245, 158, 11, 0.14); color: var(--amber); }
+  .fi-teal   { background: rgba(16, 185, 129, 0.14); color: #10b981; }
+
+  /*  How It Works  */
+  .how-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    box-shadow: var(--shadow-sm);
+    height: 100%;
+  }
+
+  .how-card-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: .5rem;
+  }
+
+  .how-card-desc {
+    color: var(--text-muted);
+    font-size: .88rem;
+    margin: 0;
+  }
+
+  /*  Why LangAI  */
+  .why-list li { font-size: .95rem; }
+  .why-list span, .why-list strong { color: var(--text-primary); }
+
+  .why-mockup {
+    background: var(--surface-soft);
+    border: 1.5px dashed var(--border);
+    border-radius: 16px;
+    height: 280px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: .95rem;
+    font-weight: 600;
+  }
+
+  /*  FAQ  */
+  .faq-item {
+    background: var(--card-bg);
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    margin-bottom: .6rem;
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .faq-item .accordion-button {
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: .95rem;
+    box-shadow: none;
+  }
+
+  .faq-item .accordion-button:not(.collapsed) {
+    background: var(--surface-soft);
+    color: var(--primary);
+    box-shadow: none;
+  }
+
+  [data-theme='dark'] .faq-item .accordion-button::after {
+    filter: invert(1) brightness(1.5);
+  }
+
+  .faq-item .accordion-body {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    font-size: .9rem;
+    line-height: 1.7;
+  }
+
+  /*  Footer  */
+  .landing-footer {
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 0;
+    text-align: center;
+  }
+
+  .landing-footer p {
+    color: var(--text-muted);
+    font-size: .84rem;
+    margin: 0;
+  }
+
+  @media (max-width: 768px) {
+    .landing-hero-title { font-size: 2.5rem; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<!--  HERO -->
+<section class="hero-section">
+  <div class="hero-bg-art">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+  </div>
+
+  <div class="container hero-content">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-7">
+        <div class="hero-badge">
+          <i class="bi bi-stars"></i> NEXT GEN AI WRITING
+        </div>
+        <h1 class="landing-hero-title">Write Better,<br>Faster, Smarter.</h1>
+        <p class="landing-hero-subtitle">
+          Supercharge your writing with our intelligent assistant. Check grammar,
+          translate documents, summarize text and more &mdash; all in one place.
+          Frictionless, fast, and free to start.
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="{% url 'trial' %}" class="btn btn-primary-gradient btn-hero-main shadow-lg">
+            <i class="bi bi-lightning-charge-fill me-2"></i>Start Free Trial
+          </a>
+          <a href="{% url 'login' %}" class="btn-hero-secondary btn-hero-main">
+            Already Have An Account? Login
+          </a>
+        </div>
+        <div class="hero-notice">
+          <i class="bi bi-shield-check me-1"></i> No Credit Card Required &bull; Unlimited Free Uses
+        </div>
+      </div>
+
+      <div class="col-lg-5 d-none d-lg-block">
+        <div class="preview-card">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="brand-icon"><i class="bi bi-stars"></i></div>
+            <h5 class="fw-700 mb-0" style="color:var(--text-primary)">Live Preview</h5>
+          </div>
+          <div class="preview-original">
+            <p class="small mb-1" style="color:var(--text-muted)">Original Text:</p>
+            <p class="small mb-0" style="color:var(--text-primary)">"He dont like to do hes homework every single day."</p>
+          </div>
+          <div class="preview-corrected">
+            <p class="small fw-700 mb-1" style="color:#10b981">
+              <i class="bi bi-check-circle-fill me-1"></i>AI Correction:
+            </p>
+            <p class="small mb-0" style="color:var(--text-primary)">
+              "He <strong>doesn't</strong> like to do <strong>his</strong> homework every single day."
+            </p>
+          </div>
+          <div class="mt-4">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="small fw-600" style="color:var(--text-primary)">Grammar Score</span>
+              <span class="small fw-700" style="color:#10b981">98%</span>
+            </div>
+            <div class="progress" style="height:7px;border-radius:10px;background:var(--surface-soft)">
+              <div class="progress-bar bg-success" style="width:98%;border-radius:10px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  FEATURES  -->
+<section class="section-light">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="section-title">Powerful Features</h2>
+      <p class="section-subtitle">Everything you need to master the written word.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="feature-card-landing">
+          <div class="feature-icon-wrapper fi-violet">
+            <i class="bi bi-spellcheck"></i>
+          </div>
+          <h4 class="feature-card-title">Grammar Check</h4>
+          <p class="feature-card-desc">Deep contextual analysis to catch complex grammatical errors and stylistic improvements.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card-landing">
+          <div class="feature-icon-wrapper fi-amber">
+            <i class="bi bi-translate"></i>
+          </div>
+          <h4 class="feature-card-title">Multi-Translation</h4>
+          <p class="feature-card-desc">Seamlessly translate between 6+ languages with high contextual accuracy.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="feature-card-landing">
+          <div class="feature-icon-wrapper fi-teal">
+            <i class="bi bi-file-earmark-text"></i>
+          </div>
+          <h4 class="feature-card-title">Smart Summary</h4>
+          <p class="feature-card-desc">Condense long documents or articles into key points instantly using AI.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  HOW IT WORKS  -->
+<section class="section-muted">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-subtitle">Simple, fast, and secure process.</p>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="how-card">
+          <div class="fs-1 text-primary mb-3"><i class="bi bi-1-circle-fill"></i></div>
+          <h4 class="how-card-title">Paste Your Text</h4>
+          <p class="how-card-desc">Enter or upload your document securely into our editor.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="how-card">
+          <div class="fs-1 mb-3" style="color:var(--amber)"><i class="bi bi-2-circle-fill"></i></div>
+          <h4 class="how-card-title">Choose Action</h4>
+          <p class="how-card-desc">Select Grammar Check, Translate, Summarize, or Plagiarism.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="how-card">
+          <div class="fs-1 text-success mb-3"><i class="bi bi-3-circle-fill"></i></div>
+          <h4 class="how-card-title">Get Results Fast</h4>
+          <p class="how-card-desc">Our AI processes your text instantly and provides accurate results.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  WHY LANGAI  -->
+<section class="section-light">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-md-6 mb-4 mb-md-0">
+        <h2 class="section-title mb-4">Why Professionals Choose <span class="text-primary">LangAI</span></h2>
+        <ul class="list-unstyled why-list">
+          <li class="mb-3 d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5 mt-1 flex-shrink-0"></i>
+            <span><strong>High Accuracy:</strong> Powered by advanced language models.</span>
+          </li>
+          <li class="mb-3 d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5 mt-1 flex-shrink-0"></i>
+            <span><strong>Privacy First:</strong> Your documents are processed securely.</span>
+          </li>
+          <li class="mb-3 d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5 mt-1 flex-shrink-0"></i>
+            <span><strong>All-in-one:</strong> No need to switch between multiple tools.</span>
+          </li>
+          <li class="mb-3 d-flex align-items-start gap-3">
+            <i class="bi bi-check-circle-fill text-success fs-5 mt-1 flex-shrink-0"></i>
+            <span><strong>Fast Performance:</strong> Instant results even with long documents.</span>
+          </li>
+        </ul>
+        <a href="{% url 'trial' %}" class="btn btn-primary-gradient mt-3 px-4">
+          <i class="bi bi-lightning-charge-fill me-2"></i>Start Now Free
+        </a>
+      </div>
+      <div class="col-md-6">
+        <div class="why-mockup">
+          <i class="bi bi-laptop fs-1 mb-3"></i>
+          <span>Seamless Experience</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  FAQ  -->
+<section class="section-muted">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="section-title">Frequently Asked Questions</h2>
+    </div>
+    <div class="row justify-content-center">
+      <div class="col-md-8">
+        <div class="accordion" id="faqAccordion">
+          <div class="accordion-item faq-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseOne">
+                How does the free trial work?
+              </button>
+            </h2>
+            <div id="collapseOne" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                You can use all core editor features completely free with no registration required.
+                There is no usage cap &mdash; simply open the editor and start writing.
+                Create an account to save your history and unlock additional features.
+              </div>
+            </div>
+          </div>
+          <div class="accordion-item faq-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button"
+                      data-bs-toggle="collapse" data-bs-target="#collapseTwo">
+                Are my documents secure?
+              </button>
+            </h2>
+            <div id="collapseTwo" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+              <div class="accordion-body">
+                Absolutely. We process your documents securely and during the free trial phase
+                we do not permanently store your entered data.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!--  FOOTER  -->
+<footer class="landing-footer">
+  <div class="container">
+    <p>&copy; {% now "Y" %} LangAI. All rights reserved.</p>
+  </div>
+</footer>
+
+{% endblock %}

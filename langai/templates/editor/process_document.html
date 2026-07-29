@@ -1,0 +1,1170 @@
+{% extends 'base.html' %}
+{% block title %}Document Processor LangAI{% endblock %}
+
+{% block extra_css %}
+<style>
+  .doc-page {
+    min-height: calc(100vh - 64px);
+    background: var(--bg);
+  }
+
+  .doc-body {
+    margin-top: 3rem;
+    padding: 0 1.5rem 3rem;
+    position: relative;
+    z-index: 10;
+  }
+
+  /* ── Panel Cards ── */
+  .panel-card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    height: 100%;
+    transition: box-shadow .25s;
+  }
+
+  .panel-head {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-soft);
+  }
+
+  .panel-head h6 {
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--text-primary);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .panel-head h6 i { color: var(--primary); }
+
+  /* ── Drop Zone ── */
+  .drop-zone-new {
+    border: 2px dashed var(--input-border);
+    border-radius: var(--radius);
+    padding: 2rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface-soft);
+    transition: all .3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .drop-zone-new:hover,
+  .drop-zone-new.drag-over {
+    border-color: var(--primary);
+    background: var(--input-bg);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+  }
+
+  .dz-icon-wrap {
+    width: 64px; height: 64px;
+    background: var(--gradient-primary);
+    border-radius: 18px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.6rem; color: #fff;
+    box-shadow: var(--shadow-sm);
+    transition: transform .3s;
+  }
+
+  .drop-zone-new:hover .dz-icon-wrap { transform: translateY(-4px) rotate(-5deg); }
+
+  .dz-title {
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--text-primary);
+    margin-bottom: .3rem;
+  }
+
+  .dz-sub {
+    font-size: .8rem;
+    color: var(--text-muted);
+    margin: 0;
+  }
+
+  .dz-formats {
+    display: flex;
+    justify-content: center;
+    gap: .5rem;
+    margin-top: .75rem;
+  }
+
+  .dz-fmt {
+    background: var(--surface-soft);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: .2rem .6rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+  }
+
+  .file-selected-badge {
+    display: none;
+    align-items: center;
+    gap: .5rem;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: .5rem .85rem;
+    margin-top: .75rem;
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--success);
+  }
+
+  /* ── Operation Selector ── */
+  .op-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: .6rem;
+    margin-top: .5rem;
+  }
+
+  .op-tile {
+    position: relative;
+    cursor: pointer;
+  }
+
+  .op-tile input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0; height: 0;
+  }
+
+  .op-tile-inner {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .75rem 1rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: all .2s;
+    background: var(--card-bg);
+  }
+
+  .op-tile-inner i { font-size: 1.1rem; }
+
+  .op-tile input:checked + .op-tile-inner,
+  .op-tile-inner:hover {
+    border-color: var(--primary);
+    background: var(--surface-soft);
+    color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(84,120,255,.1);
+  }
+
+  /* ── Extra Options ── */
+  .extra-opt-box {
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .9rem 1rem;
+    margin-top: .75rem;
+    animation: slideDown .25s ease;
+  }
+
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Process Button ── */
+  .btn-process-doc {
+    background: var(--gradient-primary);
+    border: none;
+    color: #fff;
+    border-radius: var(--radius);
+    font-weight: 700;
+    font-size: 1rem;
+    padding: .85rem;
+    width: 100%;
+    margin-top: 1.25rem;
+    transition: all .3s;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    letter-spacing: .3px;
+  }
+
+  .btn-process-doc:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+    color: #fff;
+  }
+
+  .btn-process-doc:disabled { opacity: .7; cursor: not-allowed; }
+
+  /* ── Result Panel ── */
+  .result-empty-new {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+    min-height: 350px;
+  }
+
+  .result-empty-icon {
+    width: 80px; height: 80px;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2rem;
+    color: var(--primary);
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .result-empty-new h6 {
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: .5rem;
+  }
+
+  .result-empty-new p { color: var(--text-muted); font-size: .88rem; max-width: 280px; }
+
+  .steps-list {
+    list-style: none;
+    padding: 0;
+    margin: 1.25rem 0 0;
+    text-align: left;
+    width: 100%;
+    max-width: 260px;
+  }
+
+  .steps-list li {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .82rem;
+    color: var(--text-muted);
+    padding: .3rem 0;
+    border-bottom: 1px dashed var(--border);
+  }
+
+  .steps-list li:last-child { border-bottom: none; }
+
+  .step-num {
+    width: 22px; height: 22px;
+    background: var(--gradient-primary);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .7rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+  }
+
+  /* ── Result Content ── */
+  .result-content { padding: 1.25rem 1.4rem; }
+
+  .result-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .75rem 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1rem;
+    font-size: .88rem;
+    font-weight: 600;
+  }
+
+  .status-success { background: rgba(16,185,129,.12); color: #059669; border: 1px solid rgba(16,185,129,.25); }
+  .status-warning { background: rgba(245,158,11,.12); color: #b45309; border: 1px solid rgba(245,158,11,.25); }
+  .status-danger  { background: rgba(239,68,68,.12);  color: #dc2626; border: 1px solid rgba(239,68,68,.25); }
+  .status-violet  { background: var(--surface-soft);  color: var(--primary); border: 1px solid var(--border); }
+  .status-teal    { background: var(--surface-soft);  color: var(--primary); border: 1px solid var(--border); }
+
+  .model-tag {
+    font-size: .72rem;
+    font-weight: 500;
+    background: var(--surface-soft);
+    color: var(--primary);
+    border-radius: 20px;
+    padding: .2rem .65rem;
+    border: 1px solid var(--border);
+  }
+
+  .result-text-box {
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 1.1rem;
+    font-size: .9rem;
+    line-height: 1.75;
+    color: var(--text-primary);
+    max-height: 320px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--surface-soft);
+  }
+
+  .result-text-box::-webkit-scrollbar { width: 5px; }
+  .result-text-box::-webkit-scrollbar-track { background: var(--surface-soft); border-radius: 10px; }
+  .result-text-box::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+
+  .result-section-label {
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: var(--text-muted);
+    margin-bottom: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+  }
+
+  /* ── Grammar Errors ── */
+  .errors-scroll {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--surface-soft);
+  }
+
+  .error-pill-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .65rem .85rem;
+    background: rgba(239,68,68,.06);
+    border-left: 3px solid var(--danger);
+    border-radius: 0 10px 10px 0;
+    margin-bottom: .4rem;
+    font-size: .83rem;
+    color: var(--text-primary);
+  }
+
+  .error-pill-item i { color: var(--danger); flex-shrink: 0; margin-top: 2px; }
+
+  .sugg-chips { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .35rem; }
+
+  .sugg-chip {
+    background: rgba(16,185,129,.1);
+    color: #059669;
+    border: 1px solid rgba(16,185,129,.25);
+    border-radius: 5px;
+    padding: .1rem .5rem;
+    font-size: .72rem;
+    font-weight: 700;
+  }
+
+  /* ── Plagiarism ── */
+  .plag-score-card {
+    text-align: center;
+    padding: 1.25rem;
+    background: var(--surface-soft);
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .plag-score-num {
+    font-size: 3rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: .25rem;
+  }
+
+  .plag-bar-wrap {
+    background: var(--border);
+    border-radius: 10px;
+    height: 10px;
+    overflow: hidden;
+    margin: .75rem 0 .5rem;
+  }
+
+  .plag-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    transition: width 1s ease;
+  }
+
+  .match-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: .55rem .85rem;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin-bottom: .4rem;
+    font-size: .83rem;
+  }
+
+  .match-row .src-name { font-weight: 600; color: var(--text-primary); }
+  .match-row .src-type { font-size: .72rem; color: var(--text-muted); margin-top: 1px; }
+  .match-row .src-pct  { font-weight: 800; font-size: .95rem; }
+
+  /* ── Stats Row ── */
+  .stats-row {
+    display: flex;
+    gap: .75rem;
+    margin-bottom: 1rem;
+  }
+
+  .stat-chip {
+    flex: 1;
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .65rem;
+    text-align: center;
+  }
+
+  .stat-chip .val {
+    font-weight: 800;
+    font-size: 1.1rem;
+    color: var(--primary);
+    display: block;
+  }
+
+  .stat-chip .lbl { font-size: .72rem; color: var(--text-muted); }
+
+  /* ── Export Button ── */
+  .btn-export {
+    background: var(--surface-soft);
+    border: 1px solid var(--border);
+    color: var(--primary);
+    border-radius: var(--radius-sm);
+    padding: .35rem .85rem;
+    font-size: .82rem;
+    font-weight: 600;
+    transition: all .2s;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .btn-export:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+  }
+
+  /* ── Section divider ── */
+  .section-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1rem 0;
+  }
+
+  /* ── Plagiarism labels ── */
+  .plag-label {
+    display: inline-block;
+    border-radius: 20px;
+    padding: .3rem .9rem;
+    font-size: .8rem;
+    font-weight: 700;
+  }
+  .plag-label-danger  { background: rgba(239,68,68,.12);  color: #dc2626; }
+  .plag-label-success { background: rgba(16,185,129,.12); color: #059669; }
+
+  /* ── Original text box (muted, dimmer than main result) ── */
+  .result-text-orig {
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    opacity: .85;
+  }
+
+  /* ════════════════════════════════════════════════════════
+     Dark-mode overrides for Bootstrap modal components.
+     Bootstrap ignores data-theme; we patch every sub-element
+     so the Save Document modal matches the dark theme.
+  ════════════════════════════════════════════════════════ */
+  [data-theme='dark'] #saveDocModal .modal-content {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-lg);
+  }
+
+  [data-theme='dark'] #saveDocModal .modal-header {
+    background: var(--surface-soft);
+    border-bottom-color: var(--border);
+  }
+
+  [data-theme='dark'] #saveDocModal .modal-title,
+  [data-theme='dark'] #saveDocModal .modal-body,
+  [data-theme='dark'] #saveDocModal .form-label {
+    color: var(--text-primary);
+  }
+
+  [data-theme='dark'] #saveDocModal .modal-footer {
+    background: var(--surface-soft);
+    border-top-color: var(--border);
+  }
+
+  /* Inputs & selects */
+  [data-theme='dark'] #saveDocModal .form-control,
+  [data-theme='dark'] #saveDocModal .form-select {
+    background: var(--input-bg);
+    border-color: var(--input-border);
+    color: var(--text-primary);
+  }
+
+  [data-theme='dark'] #saveDocModal .form-control::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+  }
+
+  [data-theme='dark'] #saveDocModal .form-control:focus,
+  [data-theme='dark'] #saveDocModal .form-select:focus {
+    background: var(--input-focus-bg);
+    border-color: var(--primary);
+    color: var(--text-primary);
+    box-shadow: 0 0 0 3px rgba(84,120,255,.18);
+  }
+
+  /* Preview box */
+  [data-theme='dark'] #saveDocModal #sdPreview {
+    background: var(--input-bg) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border);
+  }
+
+  /* Close button */
+  [data-theme='dark'] #saveDocModal .btn-close {
+    filter: invert(1) grayscale(1);
+    opacity: .7;
+  }
+
+  [data-theme='dark'] #saveDocModal .btn-close:hover {
+    opacity: 1;
+  }
+
+  /* Secondary (Cancel) button */
+  [data-theme='dark'] #saveDocModal .btn-secondary {
+    background: var(--surface-soft);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  [data-theme='dark'] #saveDocModal .btn-secondary:hover {
+    background: var(--border);
+    color: var(--text-primary);
+  }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="doc-page">
+
+  <!-- Body -->
+  <div class="doc-body">
+    <div class="container-fluid px-2">
+      <div class="row g-4 align-items-start">
+
+        <!-- ── LEFT: Upload Panel ── -->
+        <div class="col-lg-4">
+          <div class="panel-card">
+            <div class="panel-head">
+              <h6> Upload & Configure</h6>
+            </div>
+            <div class="p-3">
+              <form method="post" enctype="multipart/form-data" id="uploadForm" novalidate>
+                {% csrf_token %}
+
+                <!-- Drop Zone -->
+                <div class="drop-zone-new" id="dropZone"
+                     onclick="document.getElementById('docFile').click()">
+                  <div class="dz-icon-wrap" id="dzIcon">
+                    <i class="bi bi-cloud-arrow-up" id="dzIconGlyph"></i>
+                  </div>
+                  <p class="dz-title" id="dzTitle">Drop Your File Here</p>
+                  <p class="dz-sub" id="dzSub">Or Click To Browse</p>
+                  <div class="dz-formats">
+                    <span class="dz-fmt">TXT</span>
+                    <span class="dz-fmt">PDF</span>
+                    <span class="dz-fmt">DOCX</span>
+                  </div>
+                </div>
+                <input type="file" id="docFile" name="document"
+                       accept=".txt,.pdf,.docx,.doc"
+                       style="display:none" onchange="handleFile(this)" />
+
+                <!-- File selected badge -->
+                <div class="file-selected-badge" id="fileSelectedBadge">
+                  <i class="bi bi-file-earmark-check-fill"></i>
+                  <span id="fileNameSpan"></span>
+                </div>
+
+                <div class="section-divider mt-3"></div>
+
+                <!-- Operation Select -->
+                <p class="result-section-label mt-1 mb-2">
+                 Select Operation
+                </p>
+                <div class="op-grid">
+                  <label class="op-tile">
+                    <input type="radio" name="operation" value="grammar"
+                           {% if active_op == 'grammar' or not active_op %}checked{% endif %}
+                           onchange="opChanged('grammar')" />
+                    <div class="op-tile-inner">
+                      <i class="bi bi-spellcheck"></i> Grammar
+                    </div>
+                  </label>
+                  <label class="op-tile">
+                    <input type="radio" name="operation" value="translate"
+                           {% if active_op == 'translate' %}checked{% endif %}
+                           onchange="opChanged('translate')" />
+                    <div class="op-tile-inner">
+                      <i class="bi bi-translate"></i> Translate
+                    </div>
+                  </label>
+                  <label class="op-tile">
+                    <input type="radio" name="operation" value="plagiarism"
+                           {% if active_op == 'plagiarism' %}checked{% endif %}
+                           onchange="opChanged('plagiarism')" />
+                    <div class="op-tile-inner">
+                      <i class="bi bi-shield-check"></i> Plagiarism
+                    </div>
+                  </label>
+                  <label class="op-tile">
+                    <input type="radio" name="operation" value="summarize"
+                           {% if active_op == 'summarize' %}checked{% endif %}
+                           onchange="opChanged('summarize')" />
+                    <div class="op-tile-inner">
+                      <i class="bi bi-file-text"></i> Summarize
+                    </div>
+                  </label>
+                </div>
+
+                <!-- Translation opts -->
+                <div id="translateOpts" class="extra-opt-box {% if active_op != 'translate' %}d-none{% endif %}">
+                  <label class="form-label-custom mb-1">
+                    Target Language
+                  </label>
+                  <select name="target_language" class="form-select custom-input">
+                    {% for code, name in supported_langs.items %}
+                    <option value="{{ code }}">{{ name }}</option>
+                    {% endfor %}
+                  </select>
+                </div>
+
+                <!-- Summarize opts -->
+                <div id="summarizeOpts" class="extra-opt-box {% if active_op != 'summarize' %}d-none{% endif %}">
+                  <label class="form-label-custom mb-1">
+                    <i class="bi bi-list-ol me-1"></i>Summary Length
+                  </label>
+                  <select name="sentences_count" class="form-select custom-input">
+                    <option value="1">1 sentence — Very short</option>
+                    <option value="2">2 sentences</option>
+                    <option value="3" selected>3 sentences — Recommended</option>
+                    <option value="5">5 sentences</option>
+                    <option value="8">8 sentences — Detailed</option>
+                  </select>
+                </div>
+
+                <button type="submit" class="btn-process-doc" id="processBtn">
+                  <i class="bi bi-lightning-charge-fill"></i>
+                  <span id="btnText">Process Document</span>
+                  <span class="spinner-border spinner-border-sm d-none" id="btnSpinner"></span>
+                </button>
+
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── RIGHT: Result Panel ── -->
+        <div class="col-lg-8">
+          <div class="panel-card">
+            <div class="panel-head">
+              <h6>
+                AI Result
+                {% if filename %}
+                <span style="font-weight:400;color:var(--text-muted);font-size:.82rem;">
+                  {{ filename }}
+                </span>
+                {% endif %}
+              </h6>
+              <!-- Action buttons (only if result exists) -->
+              {% if result and result.success %}
+              <div class="d-flex gap-2 align-items-center">
+                <!-- Export .txt -->
+                <form method="post" action="{% url 'export_result' %}" style="margin:0">
+                  {% csrf_token %}
+                  <input type="hidden" name="format" value="txt" />
+                  <input type="hidden" name="filename" value="langai_{{ active_op }}_result" />
+                  <input type="hidden" name="content"
+                    value="{% if result.corrected %}{{ result.corrected }}{% elif result.translated %}{{ result.translated }}{% elif result.summary %}{{ result.summary }}{% else %}Similarity Score: {{ result.similarity_score }}%{% endif %}" />
+                  <button type="submit" class="btn-export">
+                    <i class="bi bi-download"></i> Export .txt
+                  </button>
+                </form>
+                <!-- Save Document (authenticated only) -->
+                {% if user.is_authenticated %}
+                <button class="btn-export" style="background:var(--gradient-primary);color:#fff;border-color:transparent;" onclick="openSaveDocModal()">
+                  <i class="bi bi-save"></i> Save Document
+                </button>
+                {% endif %}
+              </div>
+              <!-- Hidden result content for JS -->
+              <span id="resultContent" style="display:none"
+                data-op="{% if active_op == 'grammar' %}Grammar Check{% elif active_op == 'translate' %}Translation ({{ result.target_lang_name }}){% elif active_op == 'summarize' %}Summarization{% else %}Plagiarism Check{% endif %}"
+                data-result="{% if result.corrected %}{{ result.corrected|escapejs }}{% elif result.translated %}{{ result.translated|escapejs }}{% elif result.summary %}{{ result.summary|escapejs }}{% else %}Similarity Score: {{ result.similarity_score }}%{% endif %}"
+              ></span>
+              {% endif %}
+            </div>
+
+            <!-- ════ EMPTY STATE ════ -->
+            {% if not result %}
+            <div class="result-empty-new">
+              <div class="result-empty-icon">
+                <i class="bi bi-file-earmark-text"></i>
+              </div>
+              <h6>No Document Processed Yet</h6>
+              <p>Upload a file on the left and choose an operation to get started.</p>
+              <ul class="steps-list">
+                <li><span class="step-num">1</span> Upload .txt, .pdf or .docx file</li>
+                <li><span class="step-num">2</span> Choose Grammar, Translate, Plagiarism or Summarize</li>
+                <li><span class="step-num">3</span> Click Process Document</li>
+                <li><span class="step-num">4</span> Export your result as .txt</li>
+              </ul>
+            </div>
+
+            <!-- ════ ERROR ════ -->
+            {% elif result.error %}
+            <div class="result-content">
+              <div class="result-status-bar status-danger">
+                <span><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ result.error }}</span>
+              </div>
+            </div>
+
+            <!-- ════ GRAMMAR RESULT ════ -->
+            {% elif active_op == 'grammar' %}
+            <div class="result-content">
+
+              <!-- Status Bar -->
+              <div class="result-status-bar {% if result.error_count == 0 %}status-success{% else %}status-warning{% endif %}">
+                <span>
+                  {% if result.error_count == 0 %}
+                  <i class="bi bi-patch-check-fill me-2"></i>Perfect! No grammar issues found.
+                  {% else %}
+                  <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                  {{ result.error_count }} issue{{ result.error_count|pluralize }} detected
+                  {% endif %}
+                </span>
+                <span class="model-tag">{{ result.model }}</span>
+              </div>
+
+              <!-- Corrected Text -->
+              {% if result.corrected %}
+              <p class="result-section-label">
+                <i class="bi bi-check2-all text-success"></i> Corrected Text
+              </p>
+              <div class="result-text-box mb-3">{{ result.corrected }}</div>
+              {% endif %}
+
+              <!-- Error List -->
+              {% if result.errors %}
+              <p class="result-section-label">
+                <i class="bi bi-list-ul text-danger"></i>
+                Issues Found ({{ result.errors|length }})
+              </p>
+              <div class="errors-scroll">
+                {% for err in result.errors|slice:":8" %}
+                <div class="error-pill-item">
+                  <i class="bi bi-x-circle-fill"></i>
+                  <div>
+                    <div>{{ err.message }}</div>
+                    {% if err.suggestions %}
+                    <div class="sugg-chips">
+                      {% for s in err.suggestions %}
+                      <span class="sugg-chip">{{ s }}</span>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+
+            </div>
+
+            <!-- ════ TRANSLATION RESULT ════ -->
+            {% elif active_op == 'translate' %}
+            <div class="result-content">
+
+              <div class="result-status-bar status-violet">
+                <span>
+                  Translated to <strong>{{ result.target_lang_name }}</strong>
+                </span>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <p class="result-section-label"> Original</p>
+                  <div class="result-text-box result-text-orig">
+                    {{ orig_text|truncatechars:500 }}
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <p class="result-section-label"> Translation</p>
+                  <div class="result-text-box">{{ result.translated }}</div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ════ PLAGIARISM RESULT ════ -->
+            {% elif active_op == 'plagiarism' %}
+            <div class="result-content">
+
+              <div class="row g-3 mb-3">
+                <!-- Score Card -->
+                <div class="col-md-5">
+                  <div class="plag-score-card">
+                    <p class="result-section-label justify-content-center mb-1">
+                      <i class="bi bi-shield-check"></i> Similarity Score
+                    </p>
+                    <div class="plag-score-num
+                      {% if result.similarity_score < 20 %}text-success
+                      {% elif result.similarity_score < 40 %}text-warning
+                      {% else %}text-danger{% endif %}">
+                      {{ result.similarity_score }}%
+                    </div>
+                    <div class="plag-bar-wrap">
+                      <div class="plag-bar-fill
+                        {% if result.similarity_score < 20 %}bg-success
+                        {% elif result.similarity_score < 40 %}bg-warning
+                        {% else %}bg-danger{% endif %}"
+                        data-width="{{ result.similarity_score }}"></div>
+                    </div>
+                    {% if result.is_plagiarized %}
+                    <span class="plag-label plag-label-danger">
+                      <i class="bi bi-x-shield-fill me-1"></i>Plagiarism Detected
+                    </span>
+                    {% else %}
+                    <span class="plag-label plag-label-success">
+                      <i class="bi bi-shield-fill-check me-1"></i>Content is Original
+                    </span>
+                    {% endif %}
+
+                    {% if result.ai_score %}
+                    <div class="mt-2" style="font-size:.78rem;color:var(--text-muted);">
+                      AI Content Score: <strong style="color:var(--primary);">{{ result.ai_score }}%</strong>
+                    </div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Match Details -->
+                <div class="col-md-7">
+                  <p class="result-section-label mb-2">
+                    <i class="bi bi-list-check"></i> Match Details
+                  </p>
+                  {% if result.details %}
+                  {% for d in result.details %}
+                  <div class="match-row">
+                    <div>
+                      <div class="src-name">{{ d.source }}</div>
+                      <div class="src-type">{{ d.type }}</div>
+                    </div>
+                    <span class="src-pct
+                      {% if d.similarity < 20 %}text-success
+                      {% elif d.similarity < 40 %}text-warning
+                      {% else %}text-danger{% endif %}">
+                      {{ d.similarity }}%
+                    </span>
+                  </div>
+                  {% endfor %}
+                  {% else %}
+                  <p class="text-muted small">No documents in database to compare against.</p>
+                  {% endif %}
+
+                  <div class="mt-2" style="font-size:.72rem;color:var(--text-muted);">
+                    Model: {{ result.model }}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- ════ SUMMARIZE RESULT ════ -->
+            {% elif active_op == 'summarize' %}
+            <div class="result-content">
+
+              <div class="result-status-bar status-teal">
+                <span>
+                  <i class="bi bi-file-earmark-zip-fill me-2"></i>
+                  Reduced by <strong>{{ result.reduction_pct }}%</strong>
+                </span>
+                <span class="model-tag">{{ result.model }}</span>
+              </div>
+
+              <!-- Stats Row -->
+              <div class="stats-row">
+                <div class="stat-chip">
+                  <span class="val">{{ result.original_words }}</span>
+                  <span class="lbl">Original Words</span>
+                </div>
+                <div class="stat-chip">
+                  <span class="val">{{ result.summary_words }}</span>
+                  <span class="lbl">Summary Words</span>
+                </div>
+                <div class="stat-chip">
+                  <span class="val">{{ result.reduction_pct }}%</span>
+                  <span class="lbl">Reduction</span>
+                </div>
+              </div>
+
+              <p class="result-section-label">
+                <i class="bi bi-card-text text-teal"></i> Summary
+              </p>
+              <div class="result-text-box">{{ result.summary }}</div>
+
+              <div class="section-divider mt-3"></div>
+
+              <p class="result-section-label mt-2">
+                <i class="bi bi-file-text"></i> Original Text Preview
+              </p>
+              <div class="result-text-box result-text-orig" style="max-height:180px;">
+                {{ orig_text|truncatechars:800 }}
+              </div>
+
+            </div>
+            {% endif %}
+
+          </div>
+        </div>
+        <!-- end right col -->
+
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Save Document Modal ─────────────────────────────────────────────── -->
+<div class="modal fade" id="saveDocModal" tabindex="-1" aria-labelledby="saveDocModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius:16px;border:none;box-shadow:0 10px 40px rgba(0,0,0,.18);">
+      <div class="modal-header" style="border-bottom:1px solid var(--border);padding:20px 24px;">
+        <h5 class="modal-title fw-600" id="saveDocModalLabel">
+          <i class="bi bi-save me-2 text-primary"></i>Save Result as Document
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <form id="saveDocForm">
+          <div class="mb-3">
+            <label for="sdTitle" class="form-label fw-600">Document Title</label>
+            <input type="text" class="form-control" id="sdTitle" placeholder="Enter document title" required
+              style="border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;" />
+            <div class="invalid-feedback">Please enter a title.</div>
+          </div>
+          <div class="mb-3">
+            <label for="sdLanguage" class="form-label fw-600">Language</label>
+            <select class="form-select" id="sdLanguage"
+              style="border-radius:10px;border:1.5px solid var(--border);padding:10px 14px;">
+              {% for code, name in supported_langs.items %}
+              <option value="{{ code }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-1">
+            <label class="form-label fw-600">Preview</label>
+            <div id="sdPreview"
+              style="max-height:140px;overflow-y:auto;padding:12px;background:var(--surface-soft);border-radius:10px;font-size:.88rem;color:var(--text-muted);"></div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer" style="border-top:1px solid var(--border);padding:16px 24px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px;">Cancel</button>
+        <button type="button" class="btn btn-primary" id="sdSaveBtn" onclick="confirmSaveDoc()"
+          style="border-radius:8px;background:var(--gradient-primary);border:none;">
+          <i class="bi bi-check-circle me-1"></i>Save Document
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Toast container -->
+<div id="toastContainer" aria-live="polite" aria-atomic="true"
+  style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:9999;display:flex;flex-direction:column;gap:.5rem;"></div>
+<script>
+// Apply plagiarism bar width from data attribute (avoids VS Code CSS linter warning)
+document.querySelectorAll('.plag-bar-fill[data-width]').forEach(el => {
+  el.style.width = el.dataset.width + '%';
+});
+
+// ── Drop zone drag handlers ────────────────────────────────────────────────
+
+const dropZone = document.getElementById('dropZone');
+
+dropZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    document.getElementById('docFile').files = dt.files;
+    handleFile({ files: [file] });
+  }
+});
+
+function handleFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Show badge
+  document.getElementById('fileNameSpan').textContent = file.name;
+  document.getElementById('fileSelectedBadge').style.display = 'flex';
+
+  // Update drop zone
+  document.getElementById('dzTitle').textContent = file.name;
+  document.getElementById('dzSub').textContent   = (file.size / 1024).toFixed(1) + ' KB';
+  document.getElementById('dzIconGlyph').className = 'bi bi-file-earmark-check-fill';
+  document.getElementById('dzIcon').style.background = 'linear-gradient(135deg,#10b981,#059669)';
+}
+
+// ── Operation change ───────────────────────────────────────────────────────
+function opChanged(op) {
+  const translateOpts = document.getElementById('translateOpts');
+  const summarizeOpts = document.getElementById('summarizeOpts');
+  // Use classList instead of style.display because the elements use Bootstrap's
+  // d-none class (display:none !important) which overrides inline styles.
+  translateOpts.classList.toggle('d-none', op !== 'translate');
+  summarizeOpts.classList.toggle('d-none', op !== 'summarize');
+}
+
+// ── Submit with validation ─────────────────────────────────────────────────
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  const file = document.getElementById('docFile').files[0];
+  if (!file) {
+    e.preventDefault();
+    // Shake the drop zone
+    dropZone.style.animation = 'none';
+    dropZone.style.borderColor = '#ef4444';
+    document.getElementById('dzTitle').textContent = '⚠ Please select a file first';
+    document.getElementById('dzTitle').style.color = '#ef4444';
+    setTimeout(() => {
+      dropZone.style.borderColor = '';
+      document.getElementById('dzTitle').textContent = 'Drop your file here';
+      document.getElementById('dzTitle').style.color = '';
+    }, 2500);
+    return;
+  }
+  const btn  = document.getElementById('processBtn');
+  const sp   = document.getElementById('btnSpinner');
+  const txt  = document.getElementById('btnText');
+  btn.disabled = true;
+  sp.classList.remove('d-none');
+  txt.textContent = 'Processing...';
+});
+
+// ── Save Document Modal ────────────────────────────────────────────────────
+function openSaveDocModal() {
+  const meta = document.getElementById('resultContent');
+  if (!meta) { _docToast('No result to save.', 'warning'); return; }
+
+  const op     = meta.dataset.op     || 'Result';
+  const result = meta.dataset.result || '';
+  if (!result.trim()) { _docToast('No content to save.', 'warning'); return; }
+
+  document.getElementById('sdPreview').textContent =
+    result.substring(0, 300) + (result.length > 300 ? '…' : '');
+  document.getElementById('sdTitle').value =
+    op + ' — ' + new Date().toLocaleDateString();
+  document.getElementById('sdTitle').classList.remove('is-invalid');
+
+  new bootstrap.Modal(document.getElementById('saveDocModal')).show();
+}
+
+async function confirmSaveDoc() {
+  const title  = document.getElementById('sdTitle').value.trim();
+  const lang   = document.getElementById('sdLanguage').value;
+  const meta   = document.getElementById('resultContent');
+
+  if (!title) {
+    document.getElementById('sdTitle').classList.add('is-invalid');
+    return;
+  }
+
+  const result    = meta.dataset.result    || '';
+  const operation = meta.dataset.op        || 'Result';
+
+  const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+    || document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
+
+  const saveBtn = document.getElementById('sdSaveBtn');
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Saving…';
+
+  try {
+    const res = await fetch('{% url "save_result_as_document" %}', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+      body: JSON.stringify({ title, content: result, operation, language: lang })
+    });
+    const data = await res.json();
+
+    if (data.status === 'success') {
+      bootstrap.Modal.getInstance(document.getElementById('saveDocModal')).hide();
+      _docToast('✅ Document saved successfully!', 'success');
+      setTimeout(() => { if (data.redirect_url) window.location.href = data.redirect_url; }, 1500);
+    } else {
+      _docToast('❌ ' + (data.message || 'Failed to save.'), 'error');
+    }
+  } catch (_) {
+    _docToast('❌ Network error. Please try again.', 'error');
+  } finally {
+    saveBtn.disabled = false;
+    saveBtn.innerHTML = '<i class="bi bi-check-circle me-1"></i>Save Document';
+  }
+}
+
+function _docToast(msg, type) {
+  const c = document.getElementById('toastContainer');
+  if (!c) return;
+  const t = document.createElement('div');
+  t.className = `toast align-items-center text-white border-0 show ${
+    type === 'success' ? 'bg-success' : type === 'error' ? 'bg-danger' : 'bg-warning'
+  }`;
+  t.setAttribute('data-bs-autohide', 'true');
+  t.setAttribute('data-bs-delay', '3500');
+  t.innerHTML = `<div class="d-flex"><div class="toast-body fw-600">${msg}</div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+  c.appendChild(t);
+  new bootstrap.Toast(t, { delay: 3500 }).show();
+  setTimeout(() => t.remove(), 4500);
+}
+</script>
+{% endblock %}

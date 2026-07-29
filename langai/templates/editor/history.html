@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+{% block title %}History LangAI{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h4 class="fw-700 mb-0">Edit History</h4>
+      <p class="text-muted small mb-0">All your previous AI operations</p>
+    </div>
+    <a href="{% url 'editor' %}" class="btn btn-primary-gradient px-4">
+      </i>New Operation
+    </a>
+  </div>
+  <!-- Filter Tabs -->
+  <div class="filter-tabs mb-4">
+    <a href="{% url 'history' %}" class="filter-tab {% if not op_filter %}active{% endif %}">All</a>
+    {% for code, label in operations %}
+    <a href="?op={{ code }}" class="filter-tab {% if op_filter == code %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if history %}
+  <div class="row g-3">
+    {% for h in history %}
+    <div class="col-md-6 col-xl-4">
+      <div class="history-card">
+        <div class="history-card-header">
+          <span class="op-badge op-{{ h.operation }}">{{ h.get_operation_display }}</span>
+          <span class="text-muted small">{{ h.created_at|date:"M d, Y · H:i" }}</span>
+        </div>
+        <div class="history-input">
+          <div class="label">Input</div>
+          <p class="text-truncate-3">{{ h.input_text|truncatechars:150 }}</p>
+        </div>
+        <div class="history-output">
+          <div class="label">Output</div>
+          <p class="text-truncate-3">{{ h.output_text|truncatechars:150 }}</p>
+        </div>
+        {% if h.metadata.model %}
+        <div class="history-model"><i class="bi bi-cpu me-1"></i>{{ h.metadata.model }}</div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-state">
+    <i class="bi bi-inbox"></i>
+    <h5>No History Yet</h5>
+    <p>Start Using The Editor To See Your Operations Here.</p>
+    <a href="{% url 'editor' %}" class="btn btn-primary-gradient px-4 mt-2">Open Editor</a>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

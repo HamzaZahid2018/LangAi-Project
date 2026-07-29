@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% block title %}Verify OTP · LangAI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-bg-art">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+  </div>
+
+  <div class="container">
+    <div class="row justify-content-center min-vh-100 align-items-center py-5">
+      <div class="col-md-6 col-lg-5 col-xl-4">
+
+        <div class="auth-card otp-card">
+          <div class="auth-logo">
+            <div class="otp-icon-wrapper">
+              <i class="bi bi-shield-lock-fill"></i>
+            </div>
+            <h2 class="mt-3 fw-700">Email Verification</h2>
+            <p class="auth-subtitle">
+              We sent a 6-digit code to<br>
+              <strong style="color:var(--primary)">{{ masked_email }}</strong>
+            </p>
+          </div>
+
+          <!-- Messages -->
+          {% if messages %}
+          {% for message in messages %}
+          <div class="alert alert-{{ message.tags }} rounded-3 mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-info-circle flex-shrink-0"></i>
+            <span>{{ message }}</span>
+          </div>
+          {% endfor %}
+          {% endif %}
+
+          <!-- OTP form errors -->
+          {% if form.otp.errors %}
+          <div class="alert alert-danger rounded-3 mb-3 d-flex align-items-center gap-2">
+            <i class="bi bi-exclamation-circle flex-shrink-0"></i>
+            <span>{{ form.otp.errors|join:", " }}</span>
+          </div>
+          {% endif %}
+
+          <form method="post" novalidate id="otpForm">
+            {% csrf_token %}
+            <!-- OTP digit boxes -->
+            <div class="otp-inputs d-flex justify-content-center gap-2 mb-4" id="otpBoxes">
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+              <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]" autocomplete="off" />
+            </div>
+
+            <!-- Hidden OTP field -->
+            <input type="hidden" name="otp" id="otp_field" />
+
+            <button type="submit" class="btn btn-primary-gradient w-100 btn-lg btn-process" id="verifyBtn" disabled>
+              <i class="bi bi-check-circle me-2"></i>Verify Code
+            </button>
+          </form>
+
+          <!-- Timer -->
+          <div class="text-center mt-4">
+            <p class="mb-1" style="font-size:.8rem; color:var(--text-muted)">Code expires in</p>
+            <div class="otp-timer" id="otpTimer">01:00</div>
+          </div>
+
+          <!-- Resend — separate form with hidden input so Django detects 'resend' in POST -->
+          <div class="text-center mt-3">
+            <form method="post" id="resendForm">
+              {% csrf_token %}
+              <input type="hidden" name="resend" value="1" />
+              <button type="submit" class="btn btn-ghost-sm" id="resendBtn" disabled>
+                <i class="bi bi-arrow-clockwise me-1"></i>Resend Code
+              </button>
+              <p class="mt-1 mb-0" id="resendNote" style="font-size:.78rem; color:var(--text-muted)">
+                Available after timer expires
+              </p>
+            </form>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // OTP box logic
+  const boxes = document.querySelectorAll('.otp-box');
+  const hiddenOtp = document.getElementById('otp_field');
+  const verifyBtn = document.getElementById('verifyBtn');
+
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/\D/g, '');
+      if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+      syncHidden();
+    });
+
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+    });
+
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const paste = (e.clipboardData || window.clipboardData)
+        .getData('text').replace(/\D/g, '');
+      [...paste.slice(0, 6)].forEach((ch, idx) => {
+        if (boxes[idx]) boxes[idx].value = ch;
+      });
+      syncHidden();
+      boxes[Math.min(paste.length, 5)].focus();
+    });
+  });
+
+  function syncHidden() {
+    const val = [...boxes].map(b => b.value).join('');
+    hiddenOtp.value = val;
+    verifyBtn.disabled = val.length !== 6;
+    boxes.forEach(b => b.classList.toggle('filled', b.value.length > 0));
+  }
+
+  // Countdown timer — 1 minute (60 seconds)
+  let timeLeft = 60;
+  const timerEl = document.getElementById('otpTimer');
+  const resendBtn = document.getElementById('resendBtn');
+  const resendNote = document.getElementById('resendNote');
+
+  const countdown = setInterval(() => {
+    timeLeft--;
+    const m = String(Math.floor(timeLeft / 60)).padStart(2, '0');
+    const s = String(timeLeft % 60).padStart(2, '0');
+    timerEl.textContent = `${m}:${s}`;
+    if (timeLeft <= 0) {
+      clearInterval(countdown);
+      timerEl.textContent = 'Expired';
+      timerEl.style.color = 'var(--danger)';
+      resendBtn.disabled = false;
+      resendNote.textContent = 'Click above to resend a new code';
+    }
+  }, 1000);
+
+  boxes[0]?.focus();
+</script>
+{% endblock %}

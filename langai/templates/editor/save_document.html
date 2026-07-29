@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Save Document LangAI{% endblock %}
+{% block content %}
+<div class="container py-5" style="max-width:700px">
+  <div class="langai-card">
+    <div class="card-header-custom">
+      <h5 class="fw-700 mb-0">Save Document</h5>
+      <a href="{% url 'editor' %}" class="btn-ghost-sm btn">Back to Editor</a>
+    </div>
+    <div class="p-4">
+      <form method="post" novalidate>
+        {% csrf_token %}
+        {% for field in form %}
+        <div class="mb-3">
+          <label class="form-label-custom">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+          <div class="invalid-msg">{{ field.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-primary-gradient px-5 mt-2">
+          Save Document
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

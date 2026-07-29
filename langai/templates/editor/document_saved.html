@@ -1,0 +1,228 @@
+{% extends 'base.html' %}
+{% block title %}Document Saved · LangAI{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+  <div class="auth-bg-art">
+    <div class="circle c1"></div>
+    <div class="circle c2"></div>
+  </div>
+
+  <div class="container py-5">
+    <div class="row justify-content-center">
+      <div class="col-md-8 col-lg-6">
+
+        <!-- Success Card -->
+        <div class="doc-saved-card">
+
+          <!-- Animated checkmark -->
+          <div class="doc-saved-icon-wrap">
+            <div class="doc-saved-ring"></div>
+            <div class="doc-saved-check">
+              <i class="bi bi-check-lg"></i>
+            </div>
+          </div>
+
+          <h2 class="doc-saved-title">Document Saved!</h2>
+          <p class="doc-saved-sub">Your document has been saved securely to your LangAI account.</p>
+
+          <!-- Document Info -->
+          <div class="doc-info-box">
+            <div class="doc-info-row">
+              <span class="doc-info-label"><i class="bi bi-file-earmark-text me-2"></i>Title</span>
+              <span class="doc-info-value fw-600">{{ doc.title }}</span>
+            </div>
+            <div class="doc-info-row">
+              <span class="doc-info-label"><i class="bi bi-translate me-2"></i>Language</span>
+              <span class="doc-info-value">{{ doc.get_language_display }}</span>
+            </div>
+            <div class="doc-info-row">
+              <span class="doc-info-label"><i class="bi bi-type me-2"></i>Words</span>
+              <span class="doc-info-value">{{ doc.word_count }} words &nbsp;·&nbsp; {{ doc.char_count }} characters</span>
+            </div>
+            <div class="doc-info-row">
+              <span class="doc-info-label"><i class="bi bi-calendar3 me-2"></i>Saved</span>
+              <span class="doc-info-value">{{ doc.created_at|date:"M d, Y · H:i" }}</span>
+            </div>
+          </div>
+
+          <!-- Content preview -->
+          <div class="doc-preview-box">
+            <div class="doc-preview-label">
+              <i class="bi bi-eye me-1"></i> Content Preview
+            </div>
+            <p class="doc-preview-text">{{ doc.content|truncatechars:300 }}</p>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="doc-saved-actions">
+            <a href="{% url 'download_document' doc.pk %}"
+               class="btn-doc-action btn-download">
+              <i class="bi bi-file-earmark-text me-2"></i>Download as TXT
+            </a>
+            <a href="{% url 'download_document_pdf' doc.pk %}"
+               class="btn-doc-action btn-download-pdf">
+              <i class="bi bi-file-earmark-pdf me-2"></i>Download as PDF
+            </a>
+            <a href="{% url 'dashboard' %}"
+               class="btn-doc-action btn-dashboard">
+              <i class="bi bi-grid-1x2-fill me-2"></i>Go to Dashboard
+            </a>
+            <a href="{% url 'editor' %}"
+               class="btn-doc-action btn-editor">
+              <i class="bi bi-pencil-square me-2"></i>New Analysis
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<style>
+/* ── Document Saved Page ─────────────────────────────────── */
+.doc-saved-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 48px 40px 40px;
+  text-align: center;
+  box-shadow: 0 8px 40px rgba(124,58,237,.12), 0 2px 8px rgba(0,0,0,.08);
+  position: relative;
+  overflow: hidden;
+  animation: cardSlideIn .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes cardSlideIn {
+  from { opacity:0; transform:translateY(30px) scale(.97); }
+  to   { opacity:1; transform:none; }
+}
+.doc-saved-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--primary), #a78bfa, #06b6d4);
+}
+
+/* Animated icon */
+.doc-saved-icon-wrap {
+  position: relative; width: 88px; height: 88px;
+  margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;
+}
+.doc-saved-ring {
+  position: absolute; inset: 0; border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: var(--primary);
+  border-right-color: #a78bfa;
+  animation: spin .8s linear infinite;
+  opacity: .6;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.doc-saved-check {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 30px var(--primary)55;
+  animation: popIn .6s .3s cubic-bezier(.34,1.56,.64,1) both;
+  font-size: 2rem; color: #fff;
+}
+@keyframes popIn {
+  from { transform: scale(0); opacity:0; }
+  to   { transform: scale(1); opacity:1; }
+}
+
+.doc-saved-title {
+  font-size: 1.7rem; font-weight: 800;
+  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+.doc-saved-sub { color: var(--text-muted); font-size: .9rem; margin-bottom: 28px; }
+
+/* Info box */
+.doc-info-box {
+  background: var(--input-bg, rgba(124,58,237,.06));
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 6px 0;
+  margin-bottom: 20px;
+  text-align: left;
+}
+.doc-info-row {
+  display: flex; align-items: flex-start;
+  justify-content: space-between; gap: 12px;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--card-border);
+}
+.doc-info-row:last-child { border-bottom: none; }
+.doc-info-label {
+  font-size: .78rem; color: var(--text-muted);
+  font-weight: 600; white-space: nowrap; min-width: 90px;
+}
+.doc-info-value {
+  font-size: .82rem; text-align: right; word-break: break-word;
+}
+
+/* Preview */
+.doc-preview-box {
+  background: var(--input-bg, rgba(124,58,237,.04));
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  text-align: left;
+}
+.doc-preview-label {
+  font-size: .72rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--primary); margin-bottom: 8px;
+}
+.doc-preview-text {
+  font-size: .82rem; color: var(--text-muted);
+  line-height: 1.6; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical; overflow: hidden;
+}
+
+/* Action Buttons */
+.doc-saved-actions {
+  display: flex; flex-direction: column; gap: 10px;
+}
+.btn-doc-action {
+  display: flex; align-items: center; justify-content: center;
+  padding: 13px 20px; border-radius: 14px;
+  font-weight: 700; font-size: .9rem; text-decoration: none;
+  transition: all .22s ease; border: 2px solid transparent;
+}
+.btn-download {
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  color: #fff;
+  box-shadow: 0 4px 20px var(--primary)44;
+}
+.btn-download:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px var(--primary)66;
+  color: #fff;
+}
+.btn-dashboard {
+  background: transparent;
+  border-color: var(--card-border);
+  color: var(--text-muted);
+}
+.btn-dashboard:hover {
+  background: var(--nav-pill-hover);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+.btn-editor {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+  font-size: .82rem; font-weight: 600;
+}
+.btn-editor:hover { color: var(--primary); }
+</style>
+{% endblock %}

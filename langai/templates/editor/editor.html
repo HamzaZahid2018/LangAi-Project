@@ -1,0 +1,975 @@
+{% extends 'base.html' %} {% load static %} {% block title %}Smart Editor
+LangAI{% endblock %} {% block content %}
+<div class="editor-page">
+  <!-- Hero strip -->
+  <div class="editor-hero">
+    <div
+      class="container-fluid px-4 py-3 d-flex align-items-center justify-content-between"
+    >
+      <div>
+        <h4 class="fw-700 mb-0 text-white">
+          Smart Editor {% if is_trial %}(Trial Mode){% endif %}
+        </h4>
+        <small class="text-white-50"
+          >Grammar &bull; Translate &bull; Plagiarism &bull; Summarize</small
+        >
+      </div>
+    </div>
+  </div>
+
+  <div class="container-fluid px-4 py-4">
+    <div class="row g-4">
+      <!-- LEFT: Input Panel -->
+      <div class="col-lg-6">
+        <div class="langai-card">
+          <div class="card-header-custom">
+            <h6 class="fw-600 mb-0">Your Text</h6>
+            <button
+              id="speechBtn"
+              class="btn btn-sm btn-ghost-mic rounded-circle"
+              style="
+                width: 36px;
+                height: 36px;
+                padding: 0;
+                justify-content: center;
+                display: flex;
+                align-items: center;
+                transition: all 0.3s;
+              "
+              title="Click to start voice dictation"
+              onclick="toggleSpeech()"
+            >
+              <i class="bi bi-mic fs-5 m-0" id="speechIcon"></i>
+            </button>
+          </div>
+
+          <div class="p-3">
+            <form method="post" id="editorForm" novalidate>
+              {% csrf_token %}
+              <input
+                type="hidden"
+                name="operation"
+                id="operationField"
+                value="{{ active_op|default:'grammar' }}"
+              />
+
+              <!-- Feature Tabs -->
+              <div class="feature-tabs mb-3">
+                <button
+                  type="button"
+                  class="feature-tab {% if active_op == 'grammar' or not active_op %}active{% endif %}"
+                  onclick="setOp('grammar', this)"
+                >
+                  <i class="bi bi-spellcheck"></i> Grammar
+                </button>
+                <button
+                  type="button"
+                  class="feature-tab {% if active_op == 'translate' %}active{% endif %}"
+                  onclick="setOp('translate', this)"
+                >
+                  <i class="bi bi-translate"></i> Translate
+                </button>
+                <button
+                  type="button"
+                  class="feature-tab {% if active_op == 'plagiarism' %}active{% endif %}"
+                  onclick="setOp('plagiarism', this)"
+                >
+                  <i class="bi bi-shield-check"></i> Plagiarism
+                </button>
+                <button
+                  type="button"
+                  class="feature-tab {% if active_op == 'summarize' %}active{% endif %}"
+                  onclick="setOp('summarize', this)"
+                >
+                  <i class="bi bi-file-text"></i> Summarize
+                </button>
+              </div>
+
+              <!-- Main Textarea -->
+              <div class="textarea-wrapper">
+                <label
+                  class="form-label-custom visually-hidden"
+                  for="mainTextarea"
+                  >Text to process</label
+                >
+                {{ form.text }}
+                <div class="textarea-footer">
+                  <span class="char-count" id="charCount">0 / 10,000</span>
+                  <button
+                    type="button"
+                    class="btn-clear-text"
+                    onclick="clearText()"
+                  >
+                    <i class="bi bi-x-circle me-1"></i>Clear
+                  </button>
+                </div>
+              </div>
+
+              <!-- Translation Options (shown only when translate selected) -->
+              <div
+                id="translateOpts"
+                class="extra-opts mt-3"
+                style="display:{% if active_op == 'translate' %}block{% else %}none{% endif %}"
+              >
+                <label class="form-label-custom" for="targetLangSelect"
+                  >Target Language</label
+                >
+                {{ form.target_language }} {% if form.target_language.errors %}
+                <div class="invalid-msg">
+                  {{ form.target_language.errors|join:", " }}
+                </div>
+                {% endif %}
+              </div>
+
+              <!-- Summarize Options (shown only when summarize selected) -->
+              <div
+                id="summarizeOpts"
+                class="extra-opts mt-3"
+                style="display:{% if active_op == 'summarize' %}block{% else %}none{% endif %}"
+              >
+                <label class="form-label-custom" for="sentencesCount"
+                  >Number of Summary Sentences</label
+                >
+                {{ form.sentences_count }}
+              </div>
+
+              {% if form.non_field_errors %}
+              <div class="alert alert-danger rounded-3 mt-2 py-2 small">
+                {{ form.non_field_errors|join:", " }}
+              </div>
+              {% endif %}
+
+              <button
+                type="submit"
+                class="btn btn-primary-gradient w-100 mt-3 btn-process"
+                id="processBtn"
+              >
+                <span id="btnText">Process Text</span>
+                <span
+                  class="spinner-border spinner-border-sm ms-2 d-none"
+                  id="btnSpinner"
+                ></span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Result Panel -->
+      <div class="col-lg-6">
+        <div class="langai-card result-panel" id="resultPanel">
+          <div class="card-header-custom">
+            <h6 class="fw-600 mb-0">Results</h6>
+            <!-- Static server-rendered buttons (initial page load with result) -->
+            {% if result and not result.error %}
+            <div class="d-flex gap-2" id="resultHeaderBtns">
+              <button
+                class="btn btn-sm btn-ghost-sm"
+                onclick="copyResult()"
+                id="copyBtn"
+              >
+                <i class="bi bi-clipboard me-1"></i>Copy
+              </button>
+              {% if active_op == 'summarize' or active_op == 'translate' %}
+              <button
+                class="btn btn-sm btn-save-result-dl"
+                onclick="downloadResultAsText()"
+                id="downloadTxtBtn"
+              >
+                <i class="bi bi-download"></i> Save Result
+              </button>
+              {% endif %}
+              <button
+                class="btn btn-sm btn-save-doc"
+                onclick="saveResult()"
+                id="saveResultBtn"
+              >
+                <i class="bi bi-save"></i> Save as Document
+              </button>
+            </div>
+            {% else %}
+            <!-- JS-controlled container for AJAX results -->
+            <div class="d-flex gap-2" id="resultHeaderBtns" style="display:none!important"></div>
+            {% endif %}
+          </div>
+
+          <div class="p-3" id="resultBody">
+            {% if not result %}
+            <div class="empty-result">
+              <div class="empty-icon"><i class="bi bi-cpu"></i></div>
+              <p>
+                Select a feature and process your text to see AI results here.
+              </p>
+              <div class="feature-info-pills">
+                <span
+                  ><i class="bi bi-check-circle text-success me-1"></i>Grammar
+                  powered by LanguageTool NLP</span
+                >
+                <span
+                  ><i class="bi bi-check-circle text-success me-1"></i
+                  >Translation via Argos Translate</span
+                >
+                <span
+                  ><i class="bi bi-check-circle text-success me-1"></i
+                  >Plagiarism via TF-IDF ML Model</span
+                >
+                <span
+                  ><i class="bi bi-check-circle text-success me-1"></i
+                  >Summarization via LSA Model</span
+                >
+              </div>
+            </div>
+
+            {% elif result.error %}
+            <div class="alert alert-danger">
+              <i class="bi bi-exclamation-triangle-fill me-2"></i>{{
+              result.error }}
+            </div>
+
+            {% elif active_op == 'grammar' %}
+            <!-- Grammar Result -->
+            <!-- data attrs let JS extract content for download -->
+            <div
+              id="resultMeta"
+              data-op="Grammar Check"
+              data-original="{{ result.original|escapejs }}"
+              data-result="{{ result.corrected|escapejs }}"
+              data-extra="Issues found: {{ result.error_count }}"
+            ></div>
+            <div class="result-header mb-3">
+              {% if result.error_count == 0 %}
+              <div class="result-badge badge-success">
+                <i class="bi bi-patch-check-fill me-2"></i>No Errors Found!
+                Perfect text.
+              </div>
+              {% else %}
+              <div class="result-badge badge-warning">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                {{ result.error_count }} issue{{ result.error_count|pluralize }}
+                found
+              </div>
+              {% endif %}
+            </div>
+
+            {% if result.corrected != result.original %}
+            <div class="result-block">
+              <div class="result-block-title">
+                <i class="bi bi-check2-all text-success me-2"></i>Corrected Text
+              </div>
+              <div class="result-text" id="resultText">
+                {{ result.corrected }}
+              </div>
+            </div>
+            {% endif %} {% if result.errors %}
+            <div class="errors-list mt-3">
+              <p class="fw-600 small mb-2">Issues Detected:</p>
+              {% for err in result.errors|slice:":5" %}
+              <div class="error-item">
+                <div class="error-msg">
+                  <i class="bi bi-x-circle text-danger me-1"></i>{{ err.message|default:err.context }}
+                </div>
+                {% if err.suggestions %}
+                <div class="error-suggestions">
+                  <span class="text-muted small">Suggestions: </span>
+                  {% for s in err.suggestions %}
+                  <span class="suggestion-pill">{{ s }}</span>
+                  {% endfor %}
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+            {% endif %} {% elif active_op == 'translate' %}
+            <!-- Translation Result -->
+            <div
+              id="resultMeta"
+              data-op="Translation ({{ result.target_lang_name }})"
+              data-original="{{ result.original|escapejs }}"
+              data-result="{{ result.translated|escapejs }}"
+              data-extra="Language: {{ result.target_lang_name }}"
+            ></div>
+            <div class="result-header mb-3">
+              <div class="result-badge badge-violet">
+                <i class="bi bi-translate me-2"></i>
+                Translated to {{ result.target_lang_name }}
+              </div>
+            </div>
+            <div class="result-block">
+              <div class="result-block-title">
+                <i class="bi bi-globe me-2 text-primary"></i>Translation
+              </div>
+              <div class="result-text" id="resultText">
+                {{ result.translated }}
+              </div>
+            </div>
+
+            {% elif active_op == 'plagiarism' %}
+            <!-- Plagiarism Result -->
+            <div
+              id="resultMeta"
+              data-op="Plagiarism Check"
+              data-original="{{ result.details|length }} sources compared"
+              data-result="Similarity Score: {{ result.similarity_score }}%"
+              data-extra="{% if result.is_plagiarized %}Plagiarism Detected{% else %}Content Appears Original{% endif %}"
+            ></div>
+            {% with score=result.similarity_score %}
+            <div class="plagiarism-meter mb-4">
+              <div
+                class="d-flex justify-content-between align-items-center mb-2"
+              >
+                <span class="fw-600">Similarity Score</span>
+                <span
+                  class="fw-700 fs-4 {% if score < 20 %}text-success {% elif score < 40 %}text-warning {% else %}text-danger{% endif %}"
+                >
+                  {{ score }}%
+                </span>
+              </div>
+              <div class="progress plag-progress">
+                <div
+                  class="progress-bar {% if score < 20 %}bg-success {% elif score < 40 %}bg-warning {% else %}bg-danger{% endif %}"
+                  style="width: {{ score }}%"
+                ></div>
+              </div>
+              <div class="mt-2">
+                {% if result.is_plagiarized %}
+                <div class="result-badge badge-danger">
+                  <i class="bi bi-x-shield-fill me-2"></i>Plagiarism Detected
+                </div>
+                {% else %}
+                <div class="result-badge badge-success">
+                  <i class="bi bi-shield-fill-check me-2"></i>Content Appears
+                  Original
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            {% endwith %} {% elif active_op == 'summarize' %}
+            <!-- Summarize Result -->
+            <div
+              id="resultMeta"
+              data-op="Text Summarization"
+              data-original="{{ result.original|escapejs }}"
+              data-result="{{ result.summary|escapejs }}"
+              data-extra="Original: {{ result.original_words }} words → Summary: {{ result.summary_words }} words"
+            ></div>
+            <div class="result-block">
+              <div class="result-block-title">
+                <i class="bi bi-card-text me-2 text-teal"></i>Summary
+              </div>
+              <div class="result-text" id="resultText">
+                {{ result.summary }}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Result Modal -->
+<div
+  class="modal fade"
+  id="saveResultModal"
+  tabindex="-1"
+  aria-labelledby="saveResultModalLabel"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-dialog-centered">
+    <div
+      class="modal-content"
+      style="
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+      "
+    >
+      <div
+        class="modal-header"
+        style="border-bottom: 1px solid #e5e7eb; padding: 20px 24px"
+      >
+        <h5 class="modal-title fw-600" id="saveResultModalLabel">
+          <i class="bi bi-save me-2 text-primary"></i>Save Result as Document
+        </h5>
+        <button
+          type="button"
+          class="btn-close"
+          data-bs-dismiss="modal"
+          aria-label="Close"
+        ></button>
+      </div>
+      <div class="modal-body" style="padding: 24px">
+        <form id="saveResultForm">
+          <div class="mb-3">
+            <label for="docTitle" class="form-label fw-600"
+              >Document Title</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="docTitle"
+              placeholder="Enter document title"
+              required
+              style="
+                border-radius: 10px;
+                border: 1.5px solid #e5e7eb;
+                padding: 10px 14px;
+              "
+            />
+            <div class="invalid-feedback">Please enter a title</div>
+          </div>
+          <div class="mb-3">
+            <label for="docLanguage" class="form-label fw-600">Language</label>
+            <select
+              class="form-select"
+              id="docLanguage"
+              style="
+                border-radius: 10px;
+                border: 1.5px solid #e5e7eb;
+                padding: 10px 14px;
+              "
+            >
+              {% for code, name in supported_langs.items %}
+              <option value="{{ code }}">{{ name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-600">Preview</label>
+            <div
+              id="docPreview"
+              style="
+                max-height: 150px;
+                overflow-y: auto;
+                padding: 12px;
+                background: #f9fafb;
+                border-radius: 10px;
+                font-size: 0.9rem;
+                color: #6b7280;
+              "
+            ></div>
+          </div>
+        </form>
+      </div>
+      <div
+        class="modal-footer"
+        style="border-top: 1px solid #e5e7eb; padding: 16px 24px"
+      >
+        <button
+          type="button"
+          class="btn btn-secondary"
+          data-bs-dismiss="modal"
+          style="border-radius: 8px"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="btn btn-primary"
+          onclick="confirmSaveResult()"
+          style="
+            border-radius: 8px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            border: none;
+          "
+        >
+          <i class="bi bi-check-circle me-1"></i>Save Document
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %} {% block extra_js %}
+<script>
+  // ── Operation switching
+  function setOp(op, el) {
+    document.getElementById('operationField').value = op;
+    document.querySelectorAll('.feature-tab').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('translateOpts').style.display = op === 'translate' ? 'block' : 'none';
+    document.getElementById('summarizeOpts').style.display = op === 'summarize' ? 'block' : 'none';
+  }
+
+  // ── Always look up the textarea fresh so it works after AJAX form-swap
+  function _getTextarea() {
+    return document.getElementById('mainTextarea');
+  }
+
+  // Char counter — re-binds after every form replacement
+  function _bindCharCounter() {
+    const ta = _getTextarea();
+    if (!ta) return;
+    ta.addEventListener('input', () => {
+      const cc = document.getElementById('charCount');
+      if (cc) cc.textContent = `${ta.value.length.toLocaleString()} / 10,000`;
+    });
+  }
+  _bindCharCounter(); // bind on first load
+
+  function clearText() {
+    const ta = _getTextarea();
+    if (ta) {
+      ta.value = '';
+      const cc = document.getElementById('charCount');
+      if (cc) cc.textContent = '0 / 10,000';
+    }
+  }
+
+  //  Form submit spinner & AJAX
+  document.getElementById('editorForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault(); // Prevent hard reload
+
+    const form = e.target;
+    // We get elements again so we don't accidentally hold stale references if DOM replaces
+    const getBtn = () => document.getElementById('processBtn');
+    const getTxt = () => document.getElementById('btnText');
+    const getSp = () => document.getElementById('btnSpinner');
+
+    if (getBtn()) getBtn().disabled = true;
+    if (getTxt()) getTxt().textContent = 'Processing...';
+    if (getSp()) getSp().classList.remove('d-none');
+
+    try {
+      const formData = new FormData(form);
+      const res = await fetch(window.location.href, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      });
+
+      if (res.ok) {
+        const html = await res.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Extract the result panel and form from new document and update DOM
+        const newResultBody = doc.getElementById('resultBody');
+        const currentResultBody = document.getElementById('resultBody');
+        if (newResultBody && currentResultBody) {
+          currentResultBody.innerHTML = newResultBody.innerHTML;
+        }
+
+        // Optional: Replace form body in case of validation errors showing up
+        const newForm = doc.getElementById('editorForm');
+        if (newForm) {
+          form.innerHTML = newForm.innerHTML;
+          _bindCharCounter(); // re-bind counter after textarea is replaced
+        }
+
+        // ── Show Save Result button for summarize & translate ops ──────────
+        const currentOp = document.getElementById('operationField')?.value || '';
+        const hasResult = !!document.getElementById('resultMeta');
+        if (hasResult) {
+          _showSaveResultButton(currentOp);
+        }
+
+      } else {
+        showToast('Server returned an error.', 'error');
+      }
+    } catch (error) {
+      showToast('Network error occurred.', 'error');
+    } finally {
+      // Re-enable button
+      if (getBtn()) getBtn().disabled = false;
+      if (getTxt()) getTxt().textContent = 'Process Text';
+      if (getSp()) getSp().classList.add('d-none');
+    }
+  });
+
+  // ── Copy result ──────────────────────────────────────────────────────────
+  function copyResult() {
+    const el = document.getElementById('resultText');
+    if (el) {
+      navigator.clipboard.writeText(el.innerText).then(() => {
+        showToast('✅ Copied to clipboard!', 'success');
+      });
+    }
+  }
+
+  // ── Download result as .txt file (for summarize & translate) ────────────
+  function downloadResultAsText() {
+    const meta = document.getElementById('resultMeta');
+    if (!meta) {
+      showToast('No result to download.', 'warning');
+      return;
+    }
+
+    const result = meta.dataset.result || (document.getElementById('resultText')?.innerText || '');
+    const operation = meta.dataset.op || 'Result';
+
+    if (!result || result.trim().length === 0) {
+      showToast('No content to download.', 'warning');
+      return;
+    }
+
+    // Create filename based on operation and date
+    const dateStr = new Date().toISOString().slice(0, 10);
+    const opSlug = operation.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const filename = `${opSlug}_${dateStr}.txt`;
+
+    // Create blob and trigger download
+    const blob = new Blob([result], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    showToast('✅ Downloaded as ' + filename, 'success');
+  }
+
+  // ── Inject dynamic Save Result button after AJAX result ──────────────────
+  function _showSaveResultButton(op) {
+    const container = document.getElementById('resultHeaderBtns');
+    if (!container) return;
+
+    const isDownloadOp = (op === 'summarize' || op === 'translate');
+
+    // Build the button HTML
+    container.innerHTML = '';
+
+    // Copy button (always shown)
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-sm btn-ghost-sm';
+    copyBtn.id = 'copyBtn';
+    copyBtn.onclick = copyResult;
+    copyBtn.innerHTML = '<i class="bi bi-clipboard me-1"></i>Copy';
+    container.appendChild(copyBtn);
+
+    // Save Result / Download button (only for summarize & translate)
+    if (isDownloadOp) {
+      const dlBtn = document.createElement('button');
+      dlBtn.className = 'btn btn-sm btn-save-result-dl save-result-anim';
+      dlBtn.id = 'downloadTxtBtn';
+      dlBtn.onclick = downloadResultAsText;
+      dlBtn.innerHTML = '<i class="bi bi-download me-1"></i>Save Result';
+      container.appendChild(dlBtn);
+    }
+
+    // Save as Document button
+    const saveBtn = document.createElement('button');
+    saveBtn.className = 'btn btn-sm btn-save-doc' + (isDownloadOp ? ' save-result-anim' : '');
+    saveBtn.id = 'saveResultBtn';
+    saveBtn.onclick = saveResult;
+    saveBtn.innerHTML = '<i class="bi bi-save me-1"></i>Save as Document';
+    container.appendChild(saveBtn);
+
+    // Show container
+    container.style.removeProperty('display');
+
+    // Trigger animation on next frame
+    if (isDownloadOp) {
+      requestAnimationFrame(() => {
+        container.querySelectorAll('.save-result-anim').forEach(btn => {
+          btn.classList.add('save-result-visible');
+        });
+      });
+    }
+  }
+
+  // ── Save Result → auto-download as .txt ──────────────────────────────────
+  function saveResult() {
+    {% if not user.is_authenticated %}
+      showToast('⚠️ Please login to save results as documents', 'warning');
+      return;
+    {% endif %}
+
+    const meta = document.getElementById('resultMeta');
+    if (!meta) { showToast('No result to save.', 'warning'); return; }
+
+    const op       = meta.dataset.op      || 'Result';
+    const result   = meta.dataset.result   || (document.getElementById('resultText')?.innerText || '');
+
+    if (!result || result.trim().length === 0) {
+      showToast('No content to save.', 'warning');
+      return;
+    }
+
+    // Set preview and show modal
+    document.getElementById('docPreview').innerText = result.substring(0, 300) + (result.length > 300 ? '...' : '');
+    document.getElementById('docTitle').value = `${op} - ${new Date().toLocaleDateString()}`;
+
+    // Show the modal
+    const modal = new bootstrap.Modal(document.getElementById('saveResultModal'));
+    modal.show();
+  }
+
+  async function confirmSaveResult() {
+    const title = document.getElementById('docTitle').value.trim();
+    const language = document.getElementById('docLanguage').value;
+    const meta = document.getElementById('resultMeta');
+
+    if (!title) {
+      document.getElementById('docTitle').classList.add('is-invalid');
+      return;
+    }
+
+    const result = meta.dataset.result || (document.getElementById('resultText')?.innerText || '');
+    const operation = meta.dataset.op || 'Result';
+
+    // Get CSRF token
+    const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+      || document.querySelector('[name=csrfmiddlewaretoken]')?.value
+      || '';
+
+    try {
+      const res = await fetch('{% url "save_result_as_document" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({
+          title: title,
+          content: result,
+          operation: operation,
+          language: language
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('saveResultModal')).hide();
+        showToast('✅ Document saved successfully!', 'success');
+
+        // Optional: redirect to documents page after a delay
+        setTimeout(() => {
+          if (data.redirect_url) {
+            window.location.href = data.redirect_url;
+          }
+        }, 1500);
+      } else {
+        showToast('❌ ' + (data.message || 'Failed to save document'), 'error');
+      }
+    } catch (error) {
+      showToast('❌ Network error occurred', 'error');
+    }
+  }
+
+  function showToast(msg, type = 'info') {
+    const c = document.getElementById('toastContainer');
+    const t = document.createElement('div');
+    t.className = `toast langai-toast align-items-center toast-${type} show`;
+    t.setAttribute('data-bs-autohide', 'true');
+    t.setAttribute('data-bs-delay', '3000');
+    t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div>
+    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    c.appendChild(t);
+    new bootstrap.Toast(t, { delay: 3000 }).show();
+    setTimeout(() => t.remove(), 4000);
+  }
+
+  // ── Speech to Text — Groq Whisper API via MediaRecorder ─────────────────
+  // Flow: click → start MediaRecorder → click again → stop → POST webm to
+  //       /speech/transcribe/ → Groq whisper-large-v3 → insert text in editor
+  // While recording, Web Speech API shows live interim results as a preview.
+
+  let _mediaRecorder  = null;
+  let _audioChunks    = [];
+  let _listening      = false;
+  let _wsRec          = null;   // Web Speech API for live preview
+  let _wsInterim      = '';     // interim text from Web Speech
+  let _textBeforeRec  = '';     // textarea content before recording started
+
+  // Helper: always grab the textarea fresh (it can be replaced by AJAX)
+  function _getTa() {
+    return document.getElementById('mainTextarea');
+  }
+
+  function toggleSpeech() {
+    if (_listening) {
+      _stopRecording();
+    } else {
+      _startRecording();
+    }
+  }
+
+  async function _startRecording() {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      showToast('❌ Microphone access denied. Please allow it in browser settings.', 'warning');
+      return;
+    }
+
+    const ta = _getTa();
+    _listening     = true;
+    _audioChunks   = [];
+    _wsInterim     = '';
+    _textBeforeRec = ta ? ta.value : '';
+    _setMicUI(true);
+
+    // ── MediaRecorder captures the raw audio for Groq ────────────────────────
+    // Prefer webm/opus which Groq supports directly; fall back to whatever browser offers
+    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+
+    _mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+    _mediaRecorder.ondataavailable = (e) => {
+      if (e.data && e.data.size > 0) _audioChunks.push(e.data);
+    };
+    _mediaRecorder.onstop = async () => {
+      // Release microphone
+      stream.getTracks().forEach(t => t.stop());
+      await _sendToGroq();
+    };
+    _mediaRecorder.start(250); // collect chunks every 250 ms
+
+    // ── Web Speech API for live interim preview (Chrome only) ────────────────
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SR) {
+      _wsRec = new SR();
+      _wsRec.continuous     = true;
+      _wsRec.interimResults = true;
+      _wsRec.lang           = 'en-US';
+
+      _wsRec.onresult = (e) => {
+        let interim = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          // We only use interim for preview — Groq provides the final text
+          if (!e.results[i].isFinal) interim = e.results[i][0].transcript;
+        }
+        _wsInterim = interim;
+        const ta = _getTa();
+        if (ta) {
+          // Show base text + live interim preview in grey-ish placeholder style
+          ta.value = _textBeforeRec + (_wsInterim ? ' ' + _wsInterim : '');
+          _updateCharCount();
+        }
+      };
+
+      _wsRec.onerror = () => {}; // silence non-critical errors
+      _wsRec.onend   = () => {
+        // Auto-restart preview if still recording
+        if (_listening && _wsRec) {
+          try { _wsRec.start(); } catch (_) {}
+        }
+      };
+
+      try { _wsRec.start(); } catch (_) {}
+    }
+  }
+
+  function _stopRecording() {
+    _listening = false;
+    _setMicUI('processing');
+
+    // Stop Web Speech preview
+    if (_wsRec) {
+      try { _wsRec.abort(); } catch (_) {}
+      _wsRec = null;
+    }
+    // Stop MediaRecorder → triggers onstop → _sendToGroq()
+    if (_mediaRecorder && _mediaRecorder.state !== 'inactive') {
+      _mediaRecorder.stop();
+    }
+  }
+
+  async function _sendToGroq() {
+    const ta = _getTa();
+    if (_audioChunks.length === 0) {
+      showToast('⚠️ No audio captured. Please try again.', 'warning');
+      _setMicUI(false);
+      if (ta) { ta.value = _textBeforeRec; _updateCharCount(); }
+      return;
+    }
+
+    const mimeType = _mediaRecorder ? (_mediaRecorder.mimeType || 'audio/webm') : 'audio/webm';
+    const blob = new Blob(_audioChunks, { type: mimeType });
+
+    // Restore textarea to content before recording (Groq will add the transcript)
+    if (ta) { ta.value = _textBeforeRec; _updateCharCount(); }
+
+    const formData = new FormData();
+    formData.append('audio', blob, 'recording.webm');
+
+    // Get CSRF token from the cookie
+    const csrfToken = (document.cookie.match(/csrftoken=([^;]+)/) || [])[1]
+      || document.querySelector('[name=csrfmiddlewaretoken]')?.value
+      || '';
+
+    try {
+      const res = await fetch('{% url "transcribe_audio" %}', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrfToken },
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.text) {
+          const separator = _textBeforeRec && !_textBeforeRec.endsWith(' ') ? ' ' : '';
+          if (ta) {
+            ta.value = _textBeforeRec + separator + data.text.trim();
+            _updateCharCount();
+          }
+          showToast('✅ Transcription complete!', 'success');
+        } else if (data.error) {
+          showToast('⚠️ ' + data.error, 'warning');
+          if (ta) { ta.value = _textBeforeRec; _updateCharCount(); }
+        }
+      } else {
+        let errMsg = 'Transcription failed. Please try again.';
+        try { const d = await res.json(); errMsg = d.error || errMsg; } catch (_) {}
+        showToast('❌ ' + errMsg, 'error');
+        if (ta) { ta.value = _textBeforeRec; _updateCharCount(); }
+      }
+    } catch (netErr) {
+      showToast('❌ Network error during transcription.', 'error');
+      if (ta) { ta.value = _textBeforeRec; _updateCharCount(); }
+    } finally {
+      _setMicUI(false);
+      _mediaRecorder  = null;
+      _audioChunks    = [];
+    }
+  }
+
+  function _updateCharCount() {
+    const ta = _getTa();
+    const cc = document.getElementById('charCount');
+    if (cc && ta) cc.textContent = `${ta.value.length.toLocaleString()} / 10,000`;
+  }
+
+  function _setMicUI(state) {
+    const btn  = document.getElementById('speechBtn');
+    const icon = document.getElementById('speechIcon');
+    if (!btn || !icon) return;
+
+    if (state === true) {
+      // Recording
+      btn.style.background = 'rgba(239,68,68,.15)';
+      btn.style.border     = '1.5px solid #ef4444';
+      btn.title            = 'Recording… click to stop & transcribe';
+      icon.className       = 'bi bi-record-circle fs-5 m-0';
+      icon.style.color     = '#ef4444';
+    } else if (state === 'processing') {
+      // Sending to Groq
+      btn.style.background = 'rgba(99,102,241,.15)';
+      btn.style.border     = '1.5px solid #6366f1';
+      btn.title            = 'Transcribing…';
+      icon.className       = 'bi bi-hourglass-split fs-5 m-0';
+      icon.style.color     = '#6366f1';
+    } else {
+      // Idle
+      btn.style.background = '';
+      btn.style.border     = '';
+      btn.title            = 'Click to start voice dictation';
+      icon.className       = 'bi bi-mic fs-5 m-0';
+      icon.style.color     = '';
+    }
+  }
+</script>
+{% endblock %}
