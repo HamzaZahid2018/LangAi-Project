@@ -52,20 +52,15 @@ def register_view(request):
         form = RegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
-            UserProfile.objects.create(user=user, is_verified=False)
-            # Generate OTP
-            otp_obj = OTPVerification.create_for_user(user)
-            # Send OTP (prints to console in dev mode)
-            send_otp_email(user, otp_obj)
-            # Store user_id in session for OTP step
-            request.session['otp_user_id'] = user.id
-            request.session['otp_purpose'] = 'register'
-
+            UserProfile.objects.create(user=user, is_verified=True)
+            
+            # Auto-login after registration (no OTP)
+            login(request, user)
             messages.success(
                 request,
-                f"Account created! A 6-digit OTP has been sent to {user.email}."
+                f"Welcome to LangAI, {user.first_name or user.username}! 🎉"
             )
-            return redirect('verify_otp')
+            return redirect('dashboard')
         else:
             messages.error(request, "Please fix the errors below.")
 
@@ -154,17 +149,10 @@ def login_view(request):
         form = CustomLoginForm(request, data=request.POST)
         if form.is_valid():
             user = form.get_user()
-            profile, _ = UserProfile.objects.get_or_create(user=user)
-            if not profile.is_verified:
-                otp_obj = OTPVerification.create_for_user(user)
-                send_otp_email(user, otp_obj)
-                request.session['otp_user_id'] = user.id
-                messages.warning(
-                    request,
-                    "Your email is not verified. A new OTP has been sent."
-                )
-                return redirect('verify_otp')
-
+            # Create profile if doesn't exist
+            UserProfile.objects.get_or_create(user=user)
+            
+            # Direct login - no OTP verification
             login(request, user)
             messages.success(request, f"Welcome back, {user.first_name or user.username}! 👋")
 
