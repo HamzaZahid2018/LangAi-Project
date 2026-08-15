@@ -736,7 +736,7 @@ LangAI{% endblock %} {% block content %}
 
       const data = await res.json();
 
-      if (data.status === 'success') {
+      if (data.success === true) {
         // Close modal
         bootstrap.Modal.getInstance(document.getElementById('saveResultModal')).hide();
         showToast('✅ Document saved successfully!', 'success');
@@ -748,7 +748,7 @@ LangAI{% endblock %} {% block content %}
           }
         }, 1500);
       } else {
-        showToast('❌ ' + (data.message || 'Failed to save document'), 'error');
+        showToast('❌ ' + (data.error || 'Failed to save document'), 'error');
       }
     } catch (error) {
       showToast('❌ Network error occurred', 'error');
