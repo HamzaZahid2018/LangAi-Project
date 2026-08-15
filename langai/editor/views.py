@@ -117,13 +117,32 @@ def editor_view(request, is_trial=False):
 
             # Save to history if logged in
             if request.user.is_authenticated:
-                EditHistory.objects.create(
-                    user=request.user,
-                    operation=operation,
-                    input_text=text,
-                    output_text=result.get('output') if isinstance(result, dict) else result,
-                    metadata=result if isinstance(result, dict) else {},
-                )
+                # Extract output text properly based on operation and result type
+                output_text = None
+                
+                if isinstance(result, dict):
+                    if operation == 'grammar':
+                        output_text = result.get('corrected') or result.get('original') or ''
+                    elif operation == 'translate':
+                        output_text = result.get('translated') or ''
+                    elif operation == 'plagiarism':
+                        output_text = f"Similarity: {result.get('similarity_score', 0)}%"
+                    elif operation == 'summarize':
+                        output_text = result.get('summary') or ''
+                    else:
+                        output_text = json.dumps(result)
+                else:
+                    output_text = str(result) if result else ''
+                
+                # Only save if output_text is not None/empty
+                if output_text and output_text.strip():
+                    EditHistory.objects.create(
+                        user=request.user,
+                        operation=operation,
+                        input_text=text,
+                        output_text=output_text,
+                        metadata=result if isinstance(result, dict) else {},
+                    )
 
     context = {
         'form': form,
