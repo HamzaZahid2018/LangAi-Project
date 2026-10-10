@@ -219,8 +219,7 @@ gunicorn langai.wsgi:application --bind 0.0.0.0:8000
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
-
+## Licens
 This project is licensed under the MIT License - see LICENSE file for details.
 
 ## Support
@@ -242,3 +241,4 @@ Created with ❤️ by the LangAI team
 - 2026-10-02: README refreshed.
 - 2026-10-04: README refreshed.
 - 2026-10-07: README refreshed.
+- 2026-10-10: README refreshed.
