@@ -254,3 +254,5 @@ Created with ❤️ by the LangAI team
 
 - 2026-10-21: README refreshed.
 - 2026-10-22: README refreshed.
+
+- 2026-10-28: README refreshed.
