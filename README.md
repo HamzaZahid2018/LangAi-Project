@@ -263,3 +263,4 @@ Created with ❤️ by the LangAI team
 - - 2026-11-03: README refreshed.
 
 - 2026-11-06: README refreshed.
+- 2026-11-07: README refreshed.
