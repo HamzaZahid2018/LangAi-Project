@@ -268,3 +268,4 @@ Created with ❤️ by the LangAI team
 - 2026-11-08: README refreshed.
 
 - 2026-11-08: evening docs refresh.
+- 2026-11-09: README refreshed.
